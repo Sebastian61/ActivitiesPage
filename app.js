@@ -1508,6 +1508,16 @@
         });
       }
 
+      // Populate pre-generated itineraries from defaults if missing locally
+      if (Array.isArray(state.trips) && Array.isArray(window.DEFAULT_TRIPS)) {
+        const defMap = new Map(window.DEFAULT_TRIPS.filter(t => t && t.id && t.itinerary).map(t => [t.id, t.itinerary]));
+        state.trips.forEach(t => {
+          if (!t.itinerary && defMap.has(t.id)) {
+            t.itinerary = defMap.get(t.id);
+          }
+        });
+      }
+
       if (!state.activities || state.activities.length === 0) {
         state.activities = cloneDefaults(window.DEFAULT_ACTIVITIES).map(a => ({
           ...a,
@@ -1522,6 +1532,13 @@
       // Vincent & Alice space is isolated with its dedicated starter pack (1 trip, 10 activities)
       if (!state.trips || state.trips.length === 0) {
         state.trips = cloneDefaults(window.DEFAULT_VA_TRIPS || []).map(t => ({ ...t, updatedAt: t.updatedAt || 1 }));
+      } else if (Array.isArray(state.trips) && Array.isArray(window.DEFAULT_VA_TRIPS)) {
+        const vaDefMap = new Map(window.DEFAULT_VA_TRIPS.filter(t => t && t.id && t.itinerary).map(t => [t.id, t.itinerary]));
+        state.trips.forEach(t => {
+          if (!t.itinerary && vaDefMap.has(t.id)) {
+            t.itinerary = vaDefMap.get(t.id);
+          }
+        });
       }
       if (!state.activities || state.activities.length === 0) {
         state.activities = cloneDefaults(window.DEFAULT_VA_ACTIVITIES || []).map(a => ({ ...a, updatedAt: a.updatedAt || 1 }));
@@ -1573,19 +1590,28 @@
 
           if (remoteTime > localTime) {
             // Remote is newer
-            tripMap.set(rt.id, rt);
+            const merged = { ...rt };
+            if (!merged.itinerary && lt.itinerary) merged.itinerary = lt.itinerary;
+            tripMap.set(rt.id, merged);
             hasRemoteChanges = true;
           } else if (localTime > remoteTime) {
-            // Local is newer: preserve local and signal cloud push
+            // Local is newer: preserve local and signal cloud push (adopt remote itinerary if local lacks it)
+            if (!lt.itinerary && rt.itinerary) {
+              lt.itinerary = rt.itinerary;
+              hasRemoteChanges = true;
+            }
+            tripMap.set(lt.id, lt);
             needsPush = true;
           } else {
-            // Timestamps equal: merge safely (preserve visited if either marked it)
+            // Timestamps equal: merge safely (preserve visited & itinerary if either has it)
             const merged = {
               ...lt,
               ...rt,
               visited: Boolean(lt.visited || rt.visited),
+              itinerary: lt.itinerary || rt.itinerary || undefined,
               updatedAt: Math.max(localTime, remoteTime) || 1
             };
+            if (!merged.itinerary) delete merged.itinerary;
             tripMap.set(rt.id, merged);
           }
         }
