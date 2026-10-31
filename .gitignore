@@ -1,0 +1,13 @@
+# Temporary and backup files
+*.bak
+*.tmp
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Dependencies & Build Output
+node_modules/
+dist/
+*.tsbuildinfo
+scratch/

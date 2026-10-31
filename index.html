@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Date &amp; Trip Planner</title>
+  <meta name="description" content="A minimalist dark-themed date activity randomizer and multi-day trip decider with interactive line graphics map.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- App Styles -->
+  <link rel="stylesheet" href="styles.css?v=2.4.6">
+
+  <!-- Anti-Tamper & Strict Data Isolation Styles -->
+  <style id="antiTamperStyle">
+    body.is-locked #appContainer,
+    body.is-locked header,
+    body.is-locked main,
+    body.is-locked .navbar,
+    body.is-locked .main-container,
+    body.is-locked .modal-backdrop {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    body.is-locked .lockscreen-overlay {
+      display: flex !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  </style>
+</head>
+<body class="is-locked">
+  <!-- Ambient background glow layers -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-rose"></div>
+
+  <!-- ============================================ -->
+  <!-- FULLSCREEN PASSCODE LOCKSCREEN -->
+  <!-- ============================================ -->
+  <div class="lockscreen-overlay" id="lockscreenOverlay">
+    <div class="lockscreen-card" id="lockscreenCard">
+      <div class="lock-icon-orb">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1 class="lock-title">Private Space</h1>
+      <p class="lock-subtitle" id="lockSubtitle">Enter personal passcode to enter</p>
+
+      <!-- Couple Space Selector -->
+      <div class="lock-couple-selector" id="lockCoupleSelector" role="tablist" aria-label="Select Couple Space">
+        <button type="button" class="couple-tab active" data-couple="seb_lynn" id="tabSebLynn" role="tab" aria-selected="true">
+          <span class="couple-tab-icon">🪐</span>
+          <span class="couple-tab-name">Seb &amp; Lynn</span>
+        </button>
+        <button type="button" class="couple-tab" data-couple="vincent_alice" id="tabVincentAlice" role="tab" aria-selected="false">
+          <span class="couple-tab-icon">🌿</span>
+          <span class="couple-tab-name">Vincent &amp; Alice</span>
+        </button>
+      </div>
+
+      <!-- User Selector (Who is logging in?) -->
+      <div class="lock-user-selector" id="lockUserSelector" role="tablist" aria-label="Select User">
+        <button type="button" class="user-tab active" data-user="seb" id="userTab1" role="tab" aria-selected="true">
+          <span class="user-tab-avatar" id="userTab1Avatar">✨</span>
+          <span class="user-tab-name" id="userTab1Name">Seb</span>
+        </button>
+        <button type="button" class="user-tab" data-user="lynn" id="userTab2" role="tab" aria-selected="false">
+          <span class="user-tab-avatar" id="userTab2Avatar">🌸</span>
+          <span class="user-tab-name" id="userTab2Name">Lynn</span>
+        </button>
+      </div>
+
+      <form id="lockscreenForm" class="lock-form" autocomplete="off">
+        <div class="lock-input-wrap">
+          <input type="password" id="inputPasscode" placeholder="Enter password for Seb..." autofocus required autocomplete="current-password">
+          <button type="button" class="btn-toggle-pass" id="btnTogglePass" title="Show/Hide Password">👁️</button>
+        </div>
+
+        <div id="lockErrorMsg" class="lock-error" style="display: none;">
+          Incorrect passcode. Try again.
+        </div>
+
+        <label class="lock-remember-wrap">
+          <input type="checkbox" id="chkRememberDevice" checked>
+          <span>Remember this device</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-block btn-unlock" id="btnUnlock">
+          Unlock Space &rarr;
+        </button>
+      </form>
+      <div class="lock-footer-version">v2.5.0</div>
+    </div>
+  </div>
+
+  <!-- Protected Application Container (Only mounted & populated after passcode unlock) -->
+  <div id="appContainer" class="app-container" style="display: none;">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="navbar-brand-row">
+        <div class="brand-identity">
+          <div class="user-pill" id="userPill" style="display: none;">
+            <span class="user-avatar" id="userAvatar">✨</span>
+            <span class="user-name" id="userName">Seb</span>
+          </div>
+        </div>
+
+        <!-- Top Controls -->
+        <div class="nav-actions">
+          <button class="cloud-sync-btn" id="btnCloudSync" title="Cloud Partner Sync" aria-label="Cloud Sync">
+            <span class="cloud-dot" id="cloudDot"></span>
+            <span class="cloud-text" id="cloudStatusText">Sync</span>
+          </button>
+          <button class="icon-btn" id="btnThemeSelector" title="Atmosphere & Style (5 Themes)" aria-label="Style Themes">
+            🎨
+          </button>
+          <button class="icon-btn" id="btnSoundToggle" title="Toggle Sound FX" aria-label="Toggle Sound FX">
+            <span id="soundIcon">🔊</span>
+          </button>
+          <button class="icon-btn" id="btnLockApp" title="Lock Space" aria-label="Lock Space">
+            🔒
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-links">
+        <button class="nav-tab active" data-view="trips" id="tabTrips">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          <span class="tab-label">Trip Planner</span>
+        </button>
+        <button class="nav-tab" data-view="dates" id="tabDates">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span class="tab-label">Date Ideas</span>
+        </button>
+        <button class="nav-tab" data-view="manage" id="tabManage">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+          <span class="tab-label">Collection (<span id="collectionCount">174</span>)</span>
+        </button>
+      </nav>
+    </header>
+
+  <!-- Main View Container -->
+  <main class="main-container view-trips" id="mainContainer">
+
+    <!-- ============================================ -->
+    <!-- LEFT PANEL: TRIP EXPLORER & MAP -->
+    <!-- ============================================ -->
+    <section class="panel trip-panel" id="tripPanel">
+      <div class="panel-header">
+        <div class="panel-title-wrap">
+          <h2 class="panel-title">Trip Explorer</h2>
+          <span class="panel-subtitle">Multi-Day Destination Decider</span>
+        </div>
+        <div class="header-right-actions">
+          <button class="btn btn-outline btn-sm" id="btnOpenAddTripModal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add Destination</span>
+          </button>
+          <div class="badge-counter" id="tripCountBadge" role="button" tabindex="0" title="Click to view all destinations">28 Saved Spots</div>
+        </div>
+      </div>
+
+      <!-- Trip Filters -->
+      <div class="filter-glass-bar trip-filters">
+        <div class="filter-group filter-slider-group">
+          <div class="slider-header-row">
+            <label class="filter-label" id="tripDaysLabel">Days to Travel</label>
+            <span class="slider-badge" id="tripDaysBadge" title="Click to reset to Any Duration">Any Duration ✨</span>
+          </div>
+          <div class="dual-slider-container" id="dualSliderContainer">
+            <div class="dual-slider-track-bg"></div>
+            <div class="dual-slider-highlight" id="dualSliderHighlight"></div>
+            <input type="range" id="tripDaysMinSlider" min="1" max="15" value="1" step="1" class="dual-range-slider dual-range-min" aria-label="Minimum days to travel">
+            <input type="range" id="tripDaysMaxSlider" min="1" max="15" value="15" step="1" class="dual-range-slider dual-range-max" aria-label="Maximum days to travel">
+          </div>
+          <div class="slider-ticks-bar">
+            <span class="tick-label">1d</span>
+            <span class="tick-label">3d</span>
+            <span class="tick-label">5d</span>
+            <span class="tick-label">7d</span>
+            <span class="tick-label">10d</span>
+            <span class="tick-label">14d</span>
+            <span class="tick-label">Any</span>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Budget Tier</label>
+          <div class="chip-select" id="tripBudgetSelect">
+            <button class="chip active" data-budget="all" title="All Budget Tiers">Any</button>
+            <button class="chip" data-budget="$" title="Budget Weekend: under NT$10,000 /人">$ (&lt;10k)</button>
+            <button class="chip" data-budget="$$" title="Island &amp; Regional: NT$10,000 - 25,000 /人">$$ (10k-25k)</button>
+            <button class="chip" data-budget="$$$" title="Comfort Asia: NT$25,000 - 60,000 /人">$$$ (25k-60k)</button>
+            <button class="chip" data-budget="$$$$" title="Long-Haul &amp; Dreams: NT$60,000+ /人">$$$$ (60k+)</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Best Season</label>
+          <div class="chip-select" id="tripSeasonSelect">
+            <button class="chip active" data-season="all">Any</button>
+            <button class="chip" data-season="spring">🌸 Spring</button>
+            <button class="chip" data-season="summer">☀️ Summer</button>
+            <button class="chip" data-season="autumn">🍁 Autumn</button>
+            <button class="chip" data-season="winter">❄️ Winter</button>
+          </div>
+        </div>
+
+        <div class="filter-group filter-group-toggle">
+          <label class="switch-wrap">
+            <input type="checkbox" id="chkTripUnvisitedOnly" checked>
+            <span class="slider"></span>
+            <span class="switch-text">Only Unvisited</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Interactive Map Frame -->
+      <div class="map-wrapper">
+        <div id="tripMap" class="trip-map"></div>
+        
+        <!-- Radar Scan Overlay Animation for Randomizer -->
+        <div class="radar-scan-overlay" id="radarOverlay">
+          <div class="radar-beam"></div>
+          <div class="radar-rings"></div>
+          <div class="radar-text" id="radarText">Scanning Destinations...</div>
+        </div>
+
+        <!-- Map Floating Controls & Legend -->
+        <div class="map-hud">
+          <div class="map-legend-bar" id="mapLegendBar">
+            <span class="legend-item wishlist" id="legendWishlistBtn" role="button" tabindex="0" title="Click to view Wishlist destinations">
+              <span class="legend-badge wishlist">✦</span>
+              <span class="legend-label">Wishlist (<span id="legendWishlistCount">0</span>)</span>
+            </span>
+            <span class="legend-divider">•</span>
+            <span class="legend-item visited" id="legendVisitedBtn" role="button" tabindex="0" title="Click to view Visited destinations">
+              <span class="legend-badge visited">✓</span>
+              <span class="legend-label">Visited (<span id="legendVisitedCount">0</span>)</span>
+            </span>
+          </div>
+          <div class="hud-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+            Click map to drop a new place
+          </div>
+          <div class="map-hud-actions">
+            <button class="btn-hud btn-hud-ai" id="btnMapAiAdd" title="AI Magic Add to Map">✨ AI Add Trip</button>
+            <button class="btn-hud" id="btnResetMapView" title="Reset Map View">⟲ Reset View</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trip Randomizer Action & Active Result Card -->
+      <div class="trip-bottom-bar">
+        <button class="btn btn-primary btn-glow-cyan" id="btnDecideTrip">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/><circle cx="12" cy="12" r="10"/></svg>
+          Pick Our Getaway ✈️
+        </button>
+
+        <!-- Selected Trip Summary Card -->
+        <div class="selected-trip-card trip-wishlist" id="selectedTripCard">
+          <div class="card-glow-edge"></div>
+          <div class="st-content">
+            <div class="st-header">
+              <div class="st-title-group">
+                <div class="st-badge-row">
+                  <span class="st-meta-badge" id="stLocationName">Hokkaido, Japan</span>
+                  <span class="st-status-pill wishlist" id="stStatusPill">✦ Wishlist</span>
+                </div>
+                <h3 class="st-title" id="stTitle">北海道粉雪與小樽運河夢幻之旅</h3>
+              </div>
+              <div class="st-header-actions">
+                <button class="btn-edit-action" id="stEditBtn" title="Edit Destination">
+                  ✏️ Edit
+                </button>
+                <button class="btn-visit-toggle" id="stVisitedBtn" title="Toggle Visited">
+                  <span class="visit-dot"></span>
+                  <span id="stVisitedText">Wishlist ✦</span>
+                </button>
+              </div>
+            </div>
+            
+            <p class="st-desc" id="stDesc">漫步小樽運河瓦斯燈下的雪景，在二世谷體驗世界級粉雪滑雪與露天雪見溫泉，夏季則有富良野盛開的薰衣草花田。</p>
+
+            <div class="st-chips">
+              <span class="pill pill-cyan" id="stDurationPill">6 - 8 Days</span>
+              <span class="pill pill-budget" id="stBudgetPill">$$$ · ~NT$45,000 - 68,000 /人</span>
+              <span class="pill pill-season" id="stSeasonPill">❄️ Winter, ☀️ Summer</span>
+            </div>
+
+            <div class="st-tags" id="stTags">
+              <span class="tag">#粉雪滑雪</span>
+              <span class="tag">#小樽運河</span>
+              <span class="tag">#雪見溫泉</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- RIGHT PANEL: DATE RANDOMIZER -->
+    <!-- ============================================ -->
+    <section class="panel date-panel" id="datePanel">
+      <div class="panel-header">
+        <div class="panel-title-wrap">
+          <h2 class="panel-title">Date Randomizer</h2>
+          <span class="panel-subtitle">Spontaneous Couples Activities</span>
+        </div>
+
+        <div class="header-right-actions">
+          <!-- Mode Toggle: Single vs Eliminator -->
+          <div class="mode-pill-toggle">
+            <button class="mode-pill active" id="btnModeSingle" data-mode="single">Single Spin</button>
+            <button class="mode-pill" id="btnModeEliminator" data-mode="eliminator" title="Partner veto mode">Draw 3</button>
+          </div>
+
+          <button class="btn btn-outline btn-sm" id="btnOpenAddActivityModal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add Activity</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Activity Filter Controls -->
+      <div class="filter-glass-bar date-filters">
+        <div class="filter-group">
+          <label class="filter-label">Occasion</label>
+          <div class="chip-select" id="dateOccasionSelect">
+            <button class="chip active" data-occasion="all">All</button>
+            <button class="chip" data-occasion="dateNight">🌙 Date Night</button>
+            <button class="chip" data-occasion="short">⚡ Short Date</button>
+            <button class="chip" data-occasion="wholeDay">☀️ Whole Day</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Budget</label>
+          <div class="chip-select" id="dateBudgetSelect">
+            <button class="chip active" data-budget="all">Any</button>
+            <button class="chip" data-budget="$">$</button>
+            <button class="chip" data-budget="$$">$$</button>
+            <button class="chip" data-budget="$$$">$$$</button>
+            <button class="chip" data-budget="$$$$">$$$$</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Environment</label>
+          <div class="chip-select" id="dateEnvSelect">
+            <button class="chip active" data-env="all">Any</button>
+            <button class="chip" data-env="indoor">🌧️ Indoor</button>
+            <button class="chip" data-env="outdoor">🌳 Outdoor</button>
+          </div>
+        </div>
+
+        <div class="filter-group filter-group-toggle">
+          <label class="switch-wrap">
+            <input type="checkbox" id="chkDateUndoneOnly" checked>
+            <span class="slider"></span>
+            <span class="switch-text">Undone Only</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Main Slot / Card Display Area -->
+      <div class="date-card-area" id="dateCardArea">
+
+        <!-- Single Card Mode (Default) -->
+        <div class="single-card-view" id="singleCardView">
+          <div class="card-glow-halo"></div>
+          
+          <div class="date-active-card" id="dateActiveCard">
+            <!-- Card Meta Top -->
+            <div class="dc-header">
+              <div class="dc-badge-group">
+                <span class="badge badge-occasion" id="cardOccasionBadge">🌙 Date Night</span>
+                <span class="badge badge-budget" id="cardBudgetBadge">$$</span>
+                <span class="badge badge-env" id="cardEnvBadge">🌧️ Indoor</span>
+              </div>
+              <span class="status-indicator" id="cardStatusIndicator">Unplanned</span>
+            </div>
+
+            <!-- Big Interactive Title with Roll Effect -->
+            <div class="dc-title-wrap">
+              <div class="slot-container" id="slotReel">
+                <h2 class="dc-title" id="cardActivityTitle">隨機買紅酒評比</h2>
+              </div>
+            </div>
+
+            <!-- Card Bottom Stats & Completion Date -->
+            <div class="dc-footer">
+              <div class="dc-id-tag">ID: <span id="cardIdTag">act_4</span></div>
+              <div class="dc-done-date" id="cardDoneDate"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Draw 3 Couple's Eliminator Mode (Hidden by default) -->
+        <div class="eliminator-view" id="eliminatorView" style="display: none;">
+          <div class="el-instruction">
+            <span>⚔️ Couple's Eliminator:</span> Each partner takes turns eliminating one card until the final date idea remains!
+          </div>
+          <div class="el-cards-grid" id="eliminatorGrid">
+            <!-- 3 cards generated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Randomizer Control Actions -->
+      <div class="date-actions-bar">
+        <button class="btn btn-spin btn-glow-rose" id="btnSpinDate">
+          <svg class="spin-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span class="spin-label">SPIN IDEAS ✨</span>
+        </button>
+
+        <button class="btn btn-secondary" id="btnMarkDateDone" title="Mark this date as completed">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Lock In &amp; Done</span>
+        </button>
+
+        <button class="btn btn-outline" id="btnEditCurrentDate" title="Edit current date idea">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Edit</span>
+        </button>
+      </div>
+
+      <!-- Quick Stats & Recent Completed Bar -->
+      <div class="stats-mini-bar">
+        <div class="stat-item">
+          <span class="stat-val" id="statCompletedCount">0</span>
+          <span class="stat-lbl">Dates Completed</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-val" id="statRemainingCount">174</span>
+          <span class="stat-lbl">Ideas Waiting</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-val" id="statTripsCount">28</span>
+          <span class="stat-lbl">Getaway Spots</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Sleek Minimalist Footer with Version -->
+  <footer class="app-footer">
+    <div class="app-footer-inner">
+      <span class="footer-brand" id="footerBrand">Seb &amp; Lynn</span>
+      <span class="footer-dot">•</span>
+      <span class="footer-subtitle">Date &amp; Getaway Hub</span>
+      <span class="footer-dot">•</span>
+      <span class="footer-version" id="appVersion">v2.5.0</span>
+    </div>
+  </footer>
+
+  <!-- ============================================ -->
+  <!-- MODAL: MANAGE ACTIVITIES & TRIPS -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="manageModal" style="display: none;">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h2 class="modal-title">Activity &amp; Trip Hub</h2>
+          <span class="modal-sub">Manage your database, review memories, or import ideas</span>
+        </div>
+        <button class="btn-close" id="btnCloseManageModal">&times;</button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="modal-subtabs">
+        <button class="modal-tab active" data-subtab="activitiesList">Activities (<span id="modalActCount">174</span>)</button>
+        <button class="modal-tab" data-subtab="tripsList">Destinations (<span id="modalTripCount">28</span>)</button>
+        <button class="modal-tab" data-subtab="importExport">Import / Backup</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Subtab 1: Activities Table -->
+        <div class="subtab-content active" id="subtabActivities">
+          <div class="table-toolbar">
+            <input type="text" class="search-input" id="actSearchInput" placeholder="Search activities (e.g. 金工, 展覽, 溜冰)...">
+            <select class="select-box" id="actFilterStatus">
+              <option value="all">All Status</option>
+              <option value="undone">Waiting (Undone)</option>
+              <option value="done">Completed Memories</option>
+            </select>
+          </div>
+          <div class="table-scroll-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th width="45">Done</th>
+                  <th>Activity Title</th>
+                  <th width="110">Occasion</th>
+                  <th width="75">Budget</th>
+                  <th width="85">Env</th>
+                  <th width="105" style="text-align: right; padding-right: 18px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="activityTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Subtab 2: Destinations Table -->
+        <div class="subtab-content" id="subtabTrips" style="display: none;">
+          <div class="table-toolbar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" class="search-input" id="tripSearchInput" placeholder="Search destinations..." style="flex: 1; min-width: 180px;">
+            <select class="select-box" id="tripFilterStatus" style="width: auto; min-width: 140px;">
+              <option value="all">All Destinations</option>
+              <option value="wishlist">Wishlist (Unvisited)</option>
+              <option value="visited">Visited Memories</option>
+            </select>
+            <button class="btn btn-outline btn-sm" id="btnOpenAddTripModalManage">
+              + Add Destination
+            </button>
+          </div>
+          <div class="table-scroll-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th width="50">Visited</th>
+                  <th style="min-width: 160px;">Destination</th>
+                  <th>Region</th>
+                  <th width="90">Days</th>
+                  <th width="90">Budget</th>
+                  <th width="130">Best Seasons</th>
+                  <th width="125" style="text-align: right; padding-right: 18px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tripTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Subtab 3: Import / Export -->
+        <div class="subtab-content" id="subtabImportExport" style="display: none;">
+          <div class="import-export-card">
+            <h3>One-Click TXT Importer</h3>
+            <p>Paste lines of date ideas (one per line, just like <code>ThingsToDo.txt</code>) to append to your collection.</p>
+            <textarea class="code-textarea" id="txtImportArea" rows="6" placeholder="泡溫泉&#10;逛唱片行&#10;自己做披薩..."></textarea>
+            <div class="btn-group">
+              <button class="btn btn-primary" id="btnRunTxtImport">Import Text Lines</button>
+              <button class="btn btn-outline" id="btnReloadSeedData">Reset to ThingsToDo.txt Original</button>
+            </div>
+          </div>
+
+          <div class="import-export-card" style="margin-top: 16px;">
+            <h3>JSON Backup &amp; Restore</h3>
+            <p>Export your entire database (activities, trips, completed status) to a JSON file, or restore from a backup.</p>
+            <div class="btn-group">
+              <button class="btn btn-outline" id="btnExportJSON">Download Backup JSON</button>
+              <label class="btn btn-outline file-input-label">
+                Upload Backup JSON
+                <input type="file" id="fileImportJSON" accept=".json" style="display: none;">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: ADD / EDIT DESTINATION -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="addTripModal" style="display: none;">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTripTitle">Add Trip Destination</h2>
+        <button class="btn-close" id="btnCloseAddTripModal">&times;</button>
+      </div>
+
+      <form id="formTrip" class="modal-form">
+        <input type="hidden" id="formTripId" value="">
+
+        <!-- AI Smart Autofill Card -->
+        <div class="ai-autofill-card">
+          <div class="ai-autofill-header">
+            <div class="ai-badge-title">
+              <span class="ai-sparkle-icon">✨</span>
+              <span>AI Destination Autofill</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="ai-sub-tag">Type place → AI pins specs</span>
+              <button type="button" class="ai-model-tag-btn" id="btnQuickModelTrip" title="Click to tweak AI model preference">
+                <span id="labelTripActiveModel">🧠 3.8 Flash</span> ▾
+              </button>
+            </div>
+          </div>
+          <div class="ai-input-group">
+            <input type="text" id="aiTripInput" class="ai-search-input" placeholder="e.g. 富士山河口湖, 京都嵐山, Banff, 知本溫泉...">
+            <button type="button" class="btn btn-ai-action" id="btnAiAutofillTrip">
+              <span id="btnAiTripText">✨ Generate</span>
+              <span id="btnAiTripSpinner" style="display:none;" class="ai-spinner">⏳</span>
+            </button>
+          </div>
+          <div class="ai-status-hint" id="aiTripStatusHint">AI geolocates GPS, estimates budget, duration, tags &amp; notes</div>
+        </div>
+
+        <div class="form-group">
+          <label>Destination Name *</label>
+          <input type="text" id="formTripName" required placeholder="e.g. 日月潭環湖慢活">
+        </div>
+        <div class="form-group">
+          <label>Region / Country *</label>
+          <input type="text" id="formTripRegion" required placeholder="e.g. Nantou, Taiwan">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Min Days</label>
+            <input type="number" id="formTripMinDays" min="1" max="30" value="2">
+          </div>
+          <div class="form-group">
+            <label>Max Days</label>
+            <input type="number" id="formTripMaxDays" min="1" max="30" value="3">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" step="0.0001" id="formTripLat" placeholder="e.g. 23.86">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" step="0.0001" id="formTripLng" placeholder="e.g. 120.91">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Budget Tier</label>
+            <select id="formTripBudget">
+              <option value="$">$ (Budget Weekend: &lt; NT$10k /人)</option>
+              <option value="$$" selected>$$ (Island &amp; Regional: NT$10k - 25k /人)</option>
+              <option value="$$$">$$$ (Comfort Asia: NT$25k - 60k /人)</option>
+              <option value="$$$$">$$$$ (Long-Haul &amp; Dreams: NT$60k+ /人)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Projected Cost</label>
+            <input type="text" id="formTripCostEstimate" placeholder="e.g. ~NT$10,000 - 18,000 /人">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="modal-season-label-row">
+            <label>Best Season</label>
+            <span class="modal-season-hint">Multi-choice</span>
+          </div>
+          <div class="modal-season-chips" id="formTripSeasonChips">
+            <button type="button" class="season-chip active" data-season="all">✨ All Seasons</button>
+            <button type="button" class="season-chip" data-season="spring">🌸 Spring</button>
+            <button type="button" class="season-chip" data-season="summer">☀️ Summer</button>
+            <button type="button" class="season-chip" data-season="autumn">🍁 Autumn</button>
+            <button type="button" class="season-chip" data-season="winter">❄️ Winter</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="margin-bottom: 0;">Description / Notes</label>
+            <button type="button" class="btn btn-outline btn-xs" id="btnAiMoreDescVarieties" title="Generate another varied AI description flavor" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; color: var(--neon-cyan); border-color: rgba(6, 182, 212, 0.4);">
+              <span id="btnAiMoreDescText">✨ Alternate Flavor</span>
+              <span id="btnAiMoreDescSpinner" style="display: none;" class="ai-spinner">⏳</span>
+            </button>
+          </div>
+          <textarea id="formTripDesc" rows="2" placeholder="Romantic highlights, packing tips..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tags (Comma-separated)</label>
+          <input type="text" id="formTripTags" placeholder="e.g. 海景自駕, 浪漫夕陽, 溫泉">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="btnSubmitTrip">Save Destination</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: ADD ACTIVITY -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="addActivityModal" style="display: none;">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalActTitle">Add New Date Idea</h2>
+        <button class="btn-close" id="btnCloseAddActivityModal">&times;</button>
+      </div>
+
+      <form id="formActivity" class="modal-form">
+        <input type="hidden" id="formActId" value="">
+
+        <!-- AI Smart Autofill Card -->
+        <div class="ai-autofill-card">
+          <div class="ai-autofill-header">
+            <div class="ai-badge-title">
+              <span class="ai-sparkle-icon">✨</span>
+              <span>AI Date Idea Autofill</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="ai-sub-tag">Type idea → AI sets specs</span>
+              <button type="button" class="ai-model-tag-btn" id="btnQuickModelAct" title="Click to tweak AI model preference">
+                <span id="labelActActiveModel">🧠 3.8 Flash</span> ▾
+              </button>
+            </div>
+          </div>
+          <div class="ai-input-group">
+            <input type="text" id="aiActInput" class="ai-search-input" placeholder="e.g. 去貓咪咖啡廳, 溜冰, 燭光牛排晚餐, 陽明山看夜景...">
+            <button type="button" class="btn btn-ai-action" id="btnAiAutofillAct">
+              <span id="btnAiActText">✨ Auto Spec</span>
+              <span id="btnAiActSpinner" style="display:none;" class="ai-spinner">⏳</span>
+            </button>
+          </div>
+          <div class="ai-status-hint" id="aiActStatusHint">AI auto-categorizes occasion, budget tier, and indoor/outdoor</div>
+        </div>
+
+        <div class="form-group">
+          <label>Activity Title *</label>
+          <input type="text" id="formActTitle" required placeholder="e.g. 採草莓做草莓大福">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Occasion</label>
+            <select id="formActOccasion">
+              <option value="short">Short Date (1-2 hrs)</option>
+              <option value="casual">Casual Hangout</option>
+              <option value="dateNight" selected>Date Night (Evening)</option>
+              <option value="dayTrip">Day Trip</option>
+              <option value="wholeDay">Whole Day Affair</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Budget</label>
+            <select id="formActBudget">
+              <option value="$">$ (Free / Under $200)</option>
+              <option value="$$" selected>$$ (Moderate / $200-$1000)</option>
+              <option value="$$$">$$$ (Splurge / $1000-$3000)</option>
+              <option value="$$$$">$$$$ (Luxury / $3000+)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Environment</label>
+          <select id="formActEnv">
+            <option value="indoor">🌧️ Indoor / Rainy Day</option>
+            <option value="outdoor">☀️ Outdoor</option>
+            <option value="any" selected>Any Environment</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="btnSubmitAct">Save Date Idea</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: CLOUD AUTO-SYNC -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="cloudSyncModal" style="display: none;">
+    <div class="modal-window modal-md">
+      <div class="modal-header">
+        <div class="sync-modal-header-title">
+          <div class="sync-icon-orb">☁️</div>
+          <div>
+            <h2 class="modal-title">Live Cloud Auto-Sync</h2>
+            <p class="modal-subtitle" id="cloudModalSubtitle">Real-time automatic sync between Seb & Lynn</p>
+          </div>
+        </div>
+        <button class="btn-close" id="btnCloseCloudSyncModal">&times;</button>
+      </div>
+
+      <div class="sync-modal-body">
+        <!-- Active Status Banner -->
+        <div class="sync-status-card" id="syncStatusCard">
+          <div class="sync-status-indicator">
+            <span class="status-orb" id="statusOrb"></span>
+            <div>
+              <div class="status-title" id="statusTitle">Auto-Sync Active</div>
+              <div class="status-detail" id="statusDetail">All trips & date ideas sync in real-time across your devices.</div>
+            </div>
+          </div>
+          <div class="room-pill-badge" id="activeRoomBadge">
+            <span id="cloudRoomTitle">🪐 Seb & Lynn's Cloud</span>
+          </div>
+        </div>
+
+        <!-- Sync Actions -->
+        <div class="sync-section">
+          <h3 class="sync-section-title">⚡ Real-Time Auto Sync</h3>
+          <p class="sync-section-desc">Whenever either of you adds an activity, ticks a date idea as done, or plans a trip on the map, it instantly appears on the other's screen.</p>
+          
+          <div class="config-actions" style="margin-top: 4px;">
+            <button class="btn btn-outline btn-sm" id="btnManualPushCloud">
+              ☁️ Force Push to Cloud
+            </button>
+            <button class="btn btn-outline btn-sm" id="btnManualPullCloud">
+              🔄 Pull Latest from Cloud
+            </button>
+          </div>
+        </div>
+
+        <!-- Google Gemini AI API Configuration -->
+        <div class="sync-section">
+          <h3 class="sync-section-title">✨ Google Gemini AI (Smart Autofill)</h3>
+          <p class="sync-section-desc">To connect official Google Gemini AI (tracking requests & usage on your Google AI Studio account), enter your Gemini API Key below. If left blank, the app uses the built-in free geocoding engine.</p>
+          
+          <div style="margin-top: 10px;">
+            <input type="password" id="inputGeminiApiKey" class="form-input" placeholder="AIzaSy... (from Google AI Studio)" style="width: 100%; font-family: monospace; font-size: 0.85rem; padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border-color, rgba(255,255,255,0.15)); background: rgba(255,255,255,0.05); color: var(--text-primary);">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-outline btn-sm" id="btnSaveGeminiKey" type="button">💾 Save AI Key</button>
+              <button class="btn btn-outline btn-sm" id="btnTestGeminiKey" type="button">⚡ Test Key &amp; Quota</button>
+              <button class="btn btn-outline btn-sm" id="btnRefreshModels" type="button">🔄 Auto-Detect Models</button>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="text-decoration: none; display: inline-flex; align-items: center;">🔗 Open Google AI Studio ↗</a>
+            </div>
+
+            <!-- Auto-Detected Model Settings Box -->
+            <div class="gemini-tier-selector" style="margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--color-accent-teal, #5eead4); letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 5px;">
+                  🤖 AI Model Preference
+                </span>
+                <span id="modelSyncStatusBadge" style="font-size: 0.72rem; color: #7ee787; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                  ☁️ Synced to Couple Space
+                </span>
+              </div>
+
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="selectGeminiModel" class="select-box" style="flex: 1; font-size: 0.84rem; padding: 7px 12px; border-radius: 8px; background: rgba(15,23,42,0.7); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18); cursor: pointer;">
+                  <optgroup label="⚡ Flash Lite (Ultra Fast / Lowest Latency)">
+                    <option value="gemini-3.5-flash-lite">⚡ Gemini 3.5 Flash Lite (rpd 0/500)</option>
+                  </optgroup>
+                  <optgroup label="🧠 Flash (High Accuracy &amp; Balanced)">
+                    <option value="gemini-3.8-flash" selected>🧠 Gemini 3.8 Flash (Accurate Geography &amp; Budget) (rpd 0/500)</option>
+                    <option value="gemini-3.7-flash">✨ Gemini 3.7 Flash (Balanced &amp; Multimodal) (rpd 0/500)</option>
+                    <option value="gemini-3.5-flash">💎 Gemini 3.5 Flash (Standard) (rpd 0/500)</option>
+                  </optgroup>
+                  <optgroup label="🔬 Pro &amp; Other Models (Deep Reasoning / Special)">
+                    <option value="gemini-2.5-pro">🔬 Gemini 2.5 Pro (Deep Reasoning) (rpd 0/50)</option>
+                    <option value="gemma-4-26b-a4b-it">🌿 Gemma 4 26B (Open Weights MoE) (rpd 0/500)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div style="font-size: 0.74rem; color: var(--color-text-muted); line-height: 1.4;" id="modelDetailText">
+                <span id="aiSyncSubtitle">Tweak on the fly anytime. Preference immediately syncs across Seb &amp; Lynn's devices.</span>
+              </div>
+            </div>
+
+            <!-- AI Quota Limits & Live Usage Monitor Card -->
+            <div class="ai-usage-monitor-card" style="margin-top: 14px; padding: 14px 16px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(6, 182, 212, 0.28); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 0.95rem;">📊</span>
+                  <span style="font-size: 0.82rem; font-weight: 700; color: #fff; letter-spacing: 0.02em;">AI Quota Limits &amp; Current Usage</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button type="button" class="btn btn-outline btn-xs" id="btnCalibrateAiUsage" title="Quick calibrate with Google AI Studio count" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 6px; border-color: rgba(6,182,212,0.4); color: #38bdf8;">🎯 Calibrate</button>
+                  <button type="button" class="btn btn-outline btn-xs" id="btnResetAiUsage" title="Reset daily count to 0" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 6px;">↺ Reset</button>
+                  <a href="https://aistudio.google.com/app/plan_and_billing" target="_blank" rel="noopener noreferrer" style="font-size: 0.72rem; color: var(--neon-cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Open Google AI Studio Plan &amp; Quota Dashboard">
+                    <span>Google AI Studio</span> ↗
+                  </a>
+                </div>
+              </div>
+
+              <!-- Usage Progress Bar -->
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>Today's Requests: <strong id="aiUsageTodayReq" style="color: #fff;">0</strong> / <span id="aiUsageRpdLimit">500</span> RPD</span>
+                  <span>RPM Rate: <strong id="aiUsageRpmLive" style="color: #5eead4;">0</strong> / <span id="aiUsageRpmLimit">15</span> RPM</span>
+                </div>
+                <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
+                  <div id="aiUsageProgressBar" style="width: 1%; height: 100%; background: linear-gradient(90deg, #06b6d4, #a855f7); transition: width 0.4s ease;"></div>
+                </div>
+              </div>
+
+              <!-- Real-world Calibration & Tier Controls -->
+              <div id="aiCalibrationPanel" style="background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                  <label for="inputCalibrateReq" style="font-size: 0.73rem; color: #cbd5e1; font-weight: 500;">Calibrate Today's Usage:</label>
+                  <div style="display: inline-flex; align-items: center; gap: 4px;">
+                    <button type="button" id="btnDecAiReq" class="btn btn-outline btn-xs" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; min-width: 22px;" title="Minus 1 request">-1</button>
+                    <input type="number" id="inputCalibrateReq" min="0" max="20000" placeholder="e.g. 23" style="width: 62px; padding: 2px 4px; font-size: 0.76rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff; text-align: center;">
+                    <button type="button" id="btnIncAiReq" class="btn btn-outline btn-xs" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; min-width: 22px;" title="Plus 1 request">+1</button>
+                    <button type="button" class="btn btn-outline btn-xs" id="btnApplyCalibrateReq" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; border-color: rgba(6,182,212,0.5); color: #38bdf8;">Set</button>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                  <label for="selectCustomRpdTier" style="font-size: 0.73rem; color: #cbd5e1; font-weight: 500;">Daily Quota Tier (RPD):</label>
+                  <select id="selectCustomRpdTier" style="padding: 3px 6px; font-size: 0.73rem; background: #0f172a; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #38bdf8;">
+                    <option value="500">500 RPD (Google AI Studio Free Tier)</option>
+                    <option value="1500">1,500 RPD (Standard / Lite Quota)</option>
+                    <option value="50">50 RPD (Pro Tier Limit)</option>
+                    <option value="custom">Custom Quota...</option>
+                  </select>
+                </div>
+                <div style="font-size: 0.69rem; color: #94a3b8; line-height: 1.4; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                  💡 <strong>Real-World Usage Sync:</strong> Google's API key endpoint does not return server-side balance headers. Set your initial count to match your <a href="https://aistudio.google.com/app/plan_and_billing" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline;">Google AI Studio</a> usage; all requests in this app automatically increment and sync across your devices.
+                </div>
+              </div>
+
+              <!-- 3-Column Limits & Stats Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 2px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
+                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Tokens Today</div>
+                  <div style="font-size: 0.88rem; font-weight: 700; color: #fff; margin-top: 2px;" id="aiUsageTokens">0</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
+                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Daily RPD Quota</div>
+                  <div style="font-size: 0.88rem; font-weight: 700; color: #38bdf8; margin-top: 2px;" id="aiLimitContext">(rpd 0/500)</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
+                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Max Output</div>
+                  <div style="font-size: 0.88rem; font-weight: 700; color: #c084fc; margin-top: 2px;" id="aiLimitOutput">65,536 tokens</div>
+                </div>
+              </div>
+
+              <div style="font-size: 0.7rem; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                <span>Last Request: <strong id="aiUsageLastCall" style="color: var(--text-muted);">None yet today</strong></span>
+                <span style="opacity: 0.8;">Synced via Firestore ☁️</span>
+              </div>
+            </div>
+
+            <div id="geminiKeyStatus" style="font-size: 0.78rem; margin-top: 8px; color: var(--text-muted); min-height: 18px;"></div>
+          </div>
+        </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MODAL: ATMOSPHERE & STYLE THEMES -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="themeModal" style="display: none;">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Atmosphere & Style</h2>
+          <p class="modal-subtitle" id="themeModalSubtitle">Pick an aesthetic vibe for Seb & Lynn's space</p>
+        </div>
+        <button class="btn-close" id="btnCloseThemeModal">&times;</button>
+      </div>
+
+      <div class="theme-picker-body">
+        <div class="theme-cards-grid">
+          <button class="theme-card active" data-theme="obsidian">
+            <div class="theme-card-preview theme-preview-obsidian">
+              <span class="preview-dot dot-1"></span>
+              <span class="preview-dot dot-2"></span>
+              <span class="preview-dot dot-3"></span>
+            </div>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🌌 Midnight Obsidian</span>
+              <span class="theme-card-desc">Cyber Neon • Electric Cyan & Rose</span>
+            </div>
+            <span class="theme-active-tag">Active</span>
+          </button>
+
+          <button class="theme-card" data-theme="sakura">
+            <div class="theme-card-preview theme-preview-sakura">
+              <span class="preview-dot dot-1"></span>
+              <span class="preview-dot dot-2"></span>
+              <span class="preview-dot dot-3"></span>
+            </div>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🌸 Sakura Sunset</span>
+              <span class="theme-card-desc">Romantic Dusk • Cherry Pink & Amber Gold</span>
+            </div>
+            <span class="theme-active-tag">Active</span>
+          </button>
+
+          <button class="theme-card" data-theme="ocean">
+            <div class="theme-card-preview theme-preview-ocean">
+              <span class="preview-dot dot-1"></span>
+              <span class="preview-dot dot-2"></span>
+              <span class="preview-dot dot-3"></span>
+            </div>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🌊 Bioluminescent Ocean</span>
+              <span class="theme-card-desc">Deep Sea Abyss • Electric Azure & Seafoam</span>
+            </div>
+            <span class="theme-active-tag">Active</span>
+          </button>
+
+          <button class="theme-card" data-theme="amber">
+            <div class="theme-card-preview theme-preview-amber">
+              <span class="preview-dot dot-1"></span>
+              <span class="preview-dot dot-2"></span>
+              <span class="preview-dot dot-3"></span>
+            </div>
+            <div class="theme-card-info">
+              <span class="theme-card-title">☕ Warm Amber Coffee</span>
+              <span class="theme-card-desc">Cozy Vintage • Honey Amber & Terracotta</span>
+            </div>
+            <span class="theme-active-tag">Active</span>
+          </button>
+
+          <button class="theme-card" data-theme="lavender">
+            <div class="theme-card-preview theme-preview-lavender">
+              <span class="preview-dot dot-1"></span>
+              <span class="preview-dot dot-2"></span>
+              <span class="preview-dot dot-3"></span>
+            </div>
+            <div class="theme-card-info">
+              <span class="theme-card-title">🔮 Moonlit Lavender</span>
+              <span class="theme-card-desc">Velvet Dream • Radiant Violet & Starlight</span>
+            </div>
+            <span class="theme-active-tag">Active</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div> <!-- /#appContainer -->
+
+  <!-- Floating Toast Notifications -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Confetti Canvas for Celebration -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+  <!-- Firebase Compat for Real-time Cloud Sync & Auth -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="firebaseConfig.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Seed Data & Application Script -->
+  <script src="defaultData.js"></script>
+  <script src="app.js?v=2.4.9"></script>
+</body>
+</html>

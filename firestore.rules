@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Seb and Lynn's isolated space
+    match /couples_rooms/shared {
+      allow read, write: if request.auth != null
+        && (request.auth.token.email in ['seb@syncandsway.couple', 'lynn@syncandsway.couple'] || request.auth.uid in ['seb_user', 'lynn_user']);
+    }
+
+    // Vincent and Alice's isolated space
+    match /couples_rooms/vincent_alice {
+      allow read, write: if request.auth != null
+        && (request.auth.token.email in ['vincent@syncandsway.couple', 'alice@syncandsway.couple'] || request.auth.uid in ['vincent_user', 'alice_user']);
+    }
+
+    // Default deny all other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
