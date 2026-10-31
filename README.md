@@ -29,15 +29,9 @@ python -m http.server 5173
 
 Open `http://localhost:5173` in your browser.
 
-### Regenerating Seed Data
+### Cloud-First Architecture
 
-If you update `ThingsToDo.txt` or modify destination definitions in `generateSeeds.js`:
-
-```bash
-node generateSeeds.js
-```
-
-This updates `defaultData.js` with all 174 couple activities and 13 getaway spots.
+Firebase Firestore is the **primary source of truth** for all dates, getaway destinations, and AI travel itineraries. All additions, edits, completions, and deletions persist directly to the cloud room (`couples_rooms/seb_lynn`) and sync automatically across partner devices. Static defaults in `defaultData.js` serve only as an offline initial seed fallback.
 
 ## Firebase Firestore Rules
 
