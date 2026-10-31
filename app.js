@@ -856,12 +856,25 @@
         const userCredential = await firebase.auth().signInWithEmailAndPassword(email, trimmed);
         return { account, user: userCredential.user };
       } catch (err) {
-        // If account does not exist in Firebase yet (e.g. initial setup for Vincent or Alice), auto-create with this password
-        if (err.code === 'auth/user-not-found') {
+        // If account does not exist in Firebase yet (e.g. initial setup for Vincent or Alice), auto-create
+        // Modern Firebase returns 'auth/invalid-credential' for non-existent users when enumeration protection is active
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          if (trimmed.length < 6) {
+            const weakErr = new Error('Password must be at least 6 characters.');
+            weakErr.code = 'auth/weak-password';
+            throw weakErr;
+          }
           try {
             const newCredential = await firebase.auth().createUserWithEmailAndPassword(email, trimmed);
             return { account, user: newCredential.user };
           } catch (createErr) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              // Account already exists with a different password -> incorrect password
+              continue;
+            }
+            if (createErr.code === 'auth/weak-password') {
+              throw createErr;
+            }
             console.warn('createUser notice:', createErr);
           }
         }
