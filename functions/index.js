@@ -287,9 +287,10 @@ exports.aiGenerate = functions.https.onRequest(async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { type, query, coupleNames, geminiKey: bodyKey } = req.body || {};
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Query is required.' });
+  const { type, query, coupleNames, geminiKey: bodyKey, destinationName } = req.body || {};
+  const activeQuery = (typeof query === 'string' && query.trim()) || (typeof destinationName === 'string' && destinationName.trim()) || '';
+  if (!activeQuery) {
+    return res.status(400).json({ error: 'Query or destinationName is required.' });
   }
 
   const couple = (typeof coupleNames === 'string' && coupleNames.trim()) ? coupleNames.trim() : 'Seb and Lynn';
@@ -300,9 +301,47 @@ exports.aiGenerate = functions.https.onRequest(async (req, res) => {
   if (geminiKey) {
     try {
       const https = require('https');
-      let prompt = '';
+      if (type === 'itinerary') {
+        const { targetDays, pace, locationName, seasons, destinationName } = req.body || {};
+        const daysCount = parseInt(targetDays, 10) || 5;
+        const paceStr = pace || 'relaxed';
+        const dest = destinationName || query;
+        const loc = locationName || '';
+        const seasonInfo = Array.isArray(seasons) ? seasons.join(', ') : 'all';
 
-      if (type === 'trip') {
+        prompt = `You are an elite romantic travel designer creating an inspiring, stress-free day-by-day travel itinerary starting point for ${couple}, a loving couple departing from Taiwan.
+
+Destination: "${dest}" (${loc})
+Duration: ${daysCount} Days
+Pace: ${paceStr} (Prioritize unhurried rhythms, authentic local eateries, and scenic romance over tourist traps)
+Seasons: ${seasonInfo}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "summary": "1 to 2 evocative sentences in Traditional Chinese capturing the romantic essence and mood of this journey",
+  "pace": "${paceStr}",
+  "totalDays": ${daysCount},
+  "bestTimeToVisit": "Best months / season details in Traditional Chinese",
+  "days": [
+    {
+      "day": 1,
+      "title": "Evocative Day Title in Traditional Chinese (with relevant emoji)",
+      "morning": "Morning activities & transportation (accounting for Taiwan departure flight/arrival on Day 1)",
+      "afternoon": "Afternoon exploration & cozy cafe stop",
+      "evening": "Dinner recommendation & romantic evening experience",
+      "coupleHighlight": "One specific, tender couple micro-moment"
+    }
+  ],
+  "foodMustTry": ["3 to 5 must-eat authentic local dishes, snacks or drinks"],
+  "packingTips": ["3 to 4 practical, destination-specific packing reminders"]
+}
+
+CRITICAL RULES:
+1. Provide exactly ${daysCount} days in the "days" array (Day 1 to Day ${daysCount}).
+2. Day 1 Logistics: Reflect realistic Taiwan departure flight times (e.g. 3-4 hr flight for Japan/Korea; 12-16 hr flight for Europe/Americas where arrival is late afternoon/night).
+3. Pacing: Never cram more than 2-3 main scenic areas or neighborhood strolls per day so the couple can truly relax.
+4. Language: Output all values in Traditional Chinese (繁體中文).`;
+      } else if (type === 'trip') {
         const varietyThemes = [
           'Sensory & Atmospheric (tangible weather, fragrances, sounds, morning or twilight light)',
           'Culinary & Hidden Spots (local delicacies, cozy cafes, intimate eateries, street food)',
@@ -421,6 +460,15 @@ environment must be one of: "indoor", "outdoor", "any".`;
               const spec = JSON.parse(text);
               if (type === 'trip' && spec.seasons) {
                 spec.seasons = normalizeSeasons(spec.seasons);
+              } else if (type === 'itinerary' && spec) {
+                spec.targetDays = spec.targetDays || spec.totalDays || (spec.days && spec.days.length);
+                spec.mustTryFoods = spec.mustTryFoods || spec.foodMustTry || [];
+                spec.tips = spec.tips || (Array.isArray(spec.packingTips) ? spec.packingTips.join('；') : spec.packingTips) || '';
+                if (Array.isArray(spec.days)) {
+                  spec.days.forEach(d => {
+                    d.theme = d.theme || d.title || '';
+                  });
+                }
               }
               return res.json({ success: true, spec, source: `Google Gemini (${model})` });
             }

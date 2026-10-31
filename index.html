@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- App Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.5.5">
+  <link rel="stylesheet" href="styles.css?v=2.6.0">
 
   <!-- Anti-Tamper & Strict Data Isolation Styles -->
   <style id="antiTamperStyle">
@@ -101,7 +101,7 @@
           Unlock Space &rarr;
         </button>
       </form>
-      <div class="lock-footer-version">v2.5.5</div>
+      <div class="lock-footer-version">v2.6.0</div>
     </div>
   </div>
 
@@ -283,6 +283,9 @@
                 <h3 class="st-title" id="stTitle">北海道粉雪與小樽運河夢幻之旅</h3>
               </div>
               <div class="st-header-actions">
+                <button class="btn-itinerary-action" id="stItineraryBtn" title="View or Plan AI Itinerary">
+                  🗺️ Itinerary
+                </button>
                 <button class="btn-edit-action" id="stEditBtn" title="Edit Destination">
                   ✏️ Edit
                 </button>
@@ -466,7 +469,7 @@
       <span class="footer-dot">•</span>
       <span class="footer-subtitle">Date &amp; Getaway Hub</span>
       <span class="footer-dot">•</span>
-      <span class="footer-version" id="appVersion">v2.5.5</span>
+      <span class="footer-version" id="appVersion">v2.6.0</span>
     </div>
   </footer>
 
@@ -773,6 +776,80 @@
   </div>
 
   <!-- ============================================ -->
+  <!-- MODAL: TRIP ITINERARY & TRAVEL PLANNER -->
+  <!-- ============================================ -->
+  <div class="modal-backdrop" id="tripItineraryModal" style="display: none;">
+    <div class="modal-window modal-lg itinerary-modal-window">
+      <div class="modal-header">
+        <div class="itinerary-header-info">
+          <div class="itinerary-meta-badges">
+            <span class="st-meta-badge" id="itinLocationBadge">Location</span>
+            <span class="itin-status-tag" id="itinStatusTag">✨ AI Travel Canvas</span>
+          </div>
+          <h2 class="modal-title" id="itinTripTitle">Destination Title</h2>
+        </div>
+        <button class="btn-close" id="btnCloseItineraryModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="itinerary-modal-body">
+        <!-- Controls Toolbar: Duration, Pace, Generate -->
+        <div class="itinerary-toolbar">
+          <div class="itinerary-ctrl-group">
+            <label for="itinDaysSelect" class="itin-ctrl-label">Duration:</label>
+            <select id="itinDaysSelect" class="select-box itin-select">
+              <!-- Dynamically populated e.g. 5 Days, 6 Days, 7 Days... -->
+            </select>
+          </div>
+          <div class="itinerary-ctrl-group">
+            <label for="itinPaceSelect" class="itin-ctrl-label">Pace:</label>
+            <select id="itinPaceSelect" class="select-box itin-select">
+              <option value="relaxed" selected>☕ Relaxed &amp; Romantic (Cozy)</option>
+              <option value="balanced">✨ Balanced Highlights</option>
+              <option value="active">🏃 Active Exploration</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm btn-generate-itin" id="btnGenerateItinerary">
+            <span id="btnItinGenText">✨ Generate Plan</span>
+            <span id="btnItinGenSpinner" style="display:none;" class="ai-spinner">⏳</span>
+          </button>
+        </div>
+
+        <!-- Dynamic Content Area -->
+        <div id="itinContentContainer" class="itinerary-content-wrap">
+          <!-- Rendered dynamically: Empty State, Loading Shimmer, or Populated Timeline -->
+        </div>
+
+        <!-- Personal Couple Notes Box -->
+        <div class="itinerary-notes-section" id="itinNotesSection" style="display: none;">
+          <h4 class="itin-section-heading">📝 Personal Couple Notes &amp; Ideas</h4>
+          <textarea id="itinNotesTextarea" class="form-input itin-notes-input" rows="3" placeholder="Add custom restaurant bookings, train passes, packing notes, or personal reminders here..."></textarea>
+          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+            <button class="btn btn-outline btn-sm" id="btnSaveItinNotes">💾 Save Notes</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer itinerary-modal-footer">
+        <div class="itin-footer-left">
+          <span id="itinGeneratedTimestamp" class="itin-timestamp-text"></span>
+        </div>
+        <div class="itin-footer-actions">
+          <button class="btn btn-outline btn-sm" id="btnCopyItinerary" style="display: none;">
+            📋 Copy to LINE / Notes
+          </button>
+          <button class="btn btn-outline btn-sm text-danger" id="btnClearItinerary" style="display: none;">
+            🗑️ Reset Plan
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btnCloseItineraryBottom">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
   <!-- MODAL: CLOUD AUTO-SYNC -->
   <!-- ============================================ -->
   <div class="modal-backdrop" id="cloudSyncModal" style="display: none;">
@@ -971,13 +1048,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="firebaseConfig.js?v=2.5.5"></script>
+  <script src="firebaseConfig.js?v=2.6.0"></script>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   
   <!-- Seed Data & Application Script -->
-  <script src="defaultData.js?v=2.5.5"></script>
-  <script src="app.js?v=2.5.5"></script>
+  <script src="defaultData.js?v=2.6.0"></script>
+  <script src="app.js?v=2.6.0"></script>
 </body>
 </html>

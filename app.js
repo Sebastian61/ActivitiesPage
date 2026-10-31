@@ -2321,6 +2321,18 @@
       visitedBtn.classList.remove('visited');
       visitedText.textContent = 'Wishlist ✦';
     }
+
+    // Itinerary button indicator
+    const itinBtn = document.getElementById('stItineraryBtn');
+    if (itinBtn) {
+      if (trip.itinerary && Array.isArray(trip.itinerary.days) && trip.itinerary.days.length > 0) {
+        itinBtn.innerHTML = `✨ Itinerary <span style="font-size:0.7rem; opacity:0.85;">(${trip.itinerary.targetDays || trip.itinerary.days.length}D)</span>`;
+        itinBtn.title = 'View Planned AI Itinerary';
+      } else {
+        itinBtn.innerHTML = '🗺️ Itinerary';
+        itinBtn.title = 'Plan AI Itinerary';
+      }
+    }
   }
 
   // =========================================================================
@@ -2884,6 +2896,7 @@
           <td>${escapeHTML(seasonsText)}</td>
           <td class="table-actions-cell">
             <div class="table-actions-wrap">
+              <button class="btn-itinerary-table" data-id="${escapeHTML(t.id)}" title="${t.itinerary ? 'View Saved AI Itinerary' : 'Plan AI Itinerary'}">${t.itinerary ? '✨' : '🧭'}</button>
               <button class="btn-locate-trip trip-fly-trigger" data-id="${escapeHTML(t.id)}" title="Locate & Fly to Map">🗺️</button>
               <button class="btn-edit-table" data-id="${escapeHTML(t.id)}" title="Edit Destination">✏️</button>
               <button class="btn-del" data-id="${escapeHTML(t.id)}" title="Delete">✕</button>
@@ -4032,6 +4045,112 @@ environment must be one of: "indoor", "outdoor", "any".`;
       // No fallback: throw error if AI is down or unavailable
       const errMsg = this.lastGeminiError || 'Gemini AI service is currently unavailable. Please check your API key or network connection.';
       throw new Error(errMsg);
+    },
+
+    async generateItinerary(trip, options = {}) {
+      if (!trip) throw new Error('Trip object is required for itinerary generation.');
+      const targetDays = parseInt(options.targetDays, 10) || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
+      const pace = options.pace || 'relaxed';
+      const coupleNames = getCoupleNames();
+
+      const paceDescriptions = {
+        relaxed: 'Relaxed & Romantic (1-2 main highlights per day, lots of café resting, late mornings, zero rushing)',
+        balanced: 'Balanced Highlights (2-3 sights per day, good mix of culture, scenic walks, and romantic dining)',
+        active: 'Active Exploration (energetic pace, packing in hidden gems, sunrise/sunset spots, photography, and adventures)'
+      };
+      const paceGuidance = paceDescriptions[pace] || paceDescriptions.relaxed;
+
+      // 1. Direct Google Gemini API call
+      const directKey = await this.getGeminiApiKey();
+      if (!directKey) {
+        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
+      } else {
+        const seasonsList = Array.isArray(trip.seasons) && trip.seasons.length > 0 ? trip.seasons.join(', ') : 'all seasons';
+        const itineraryPrompt = `You are an elite romantic travel designer for ${coupleNames}, a loving couple departing from Taiwan.
+Design a breathtaking, practical, and deeply memorable ${targetDays}-day couples starter itinerary for "${trip.name}" (Location: ${trip.locationName || trip.name}).
+Preferred Pace: ${paceGuidance}.
+Best Seasons: ${seasonsList}.
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "summary": "1-2 inspiring sentences capturing the spirit, rhythm, and romantic highlight of this ${targetDays}-day journey in Traditional Chinese.",
+  "targetDays": ${targetDays},
+  "pace": "${pace}",
+  "days": [
+    {
+      "day": 1,
+      "theme": "Evocative theme for Day 1 in Traditional Chinese with emoji (e.g. 抵達古都・鴨川河畔漫步 🏮)",
+      "morning": "Morning activity details in Traditional Chinese with emojis",
+      "afternoon": "Afternoon activity details in Traditional Chinese with emojis",
+      "evening": "Evening activity details in Traditional Chinese with emojis",
+      "coupleHighlight": "A tender, specific romantic micro-moment for the two of them (e.g. 傍晚在河堤並肩吹微風，分食一支焙茶冰淇淋 🍦)"
+    }
+  ],
+  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
+  "tips": "2-3 practical tips for Taiwanese travelers (transport passes, booking advice, best timing, packing reminders) in Traditional Chinese."
+}
+
+CRITICAL RULES:
+1. Provide exactly ${targetDays} items in the 'days' array (Day 1 through Day ${targetDays}).
+2. Ground all recommendations in real, authentic locations, neighborhoods, cafes, and scenic vistas of ${trip.name} / ${trip.locationName}.
+3. All prose must be in natural, evocative Traditional Chinese (繁體中文).
+4. NEVER use generic filler clichés like "度過美好的一天" or "留下甜蜜的回憶". Make every day specific, sensory, and romantic.`;
+
+        const directSpec = await this.callGeminiDirect(itineraryPrompt);
+        if (directSpec && Array.isArray(directSpec.days) && directSpec.days.length > 0) {
+          directSpec.targetDays = targetDays;
+          directSpec.pace = pace;
+          directSpec.generatedAt = Date.now();
+          const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+          directSpec.model = localStorage.getItem(modelProp) || 'gemini-3.5-flash-lite';
+          // Ensure theme and other normalization
+          directSpec.days.forEach(d => {
+            d.theme = d.theme || d.title || '';
+          });
+          directSpec.mustTryFoods = directSpec.mustTryFoods || directSpec.foodMustTry || [];
+          directSpec.tips = directSpec.tips || (Array.isArray(directSpec.packingTips) ? directSpec.packingTips.join('；') : directSpec.packingTips) || '';
+          return directSpec;
+        }
+      }
+
+      // 2. Serverless Cloud Function fallback
+      try {
+        const srvResp = await fetch(this.getServerlessEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'itinerary',
+            destinationName: trip.name,
+            query: trip.name,
+            locationName: trip.locationName || '',
+            seasons: trip.seasons || [],
+            targetDays,
+            pace,
+            coupleNames,
+            geminiKey: directKey
+          })
+        });
+        if (srvResp.ok) {
+          const srvData = await srvResp.json();
+          if (srvData && srvData.success && srvData.spec) {
+            srvData.spec._source = srvData.source || 'Firebase Cloud Function (Gemini)';
+            srvData.spec.generatedAt = Date.now();
+            srvData.spec.targetDays = targetDays;
+            srvData.spec.pace = pace;
+            if (Array.isArray(srvData.spec.days)) {
+              srvData.spec.days.forEach(d => {
+                d.theme = d.theme || d.title || '';
+              });
+            }
+            srvData.spec.mustTryFoods = srvData.spec.mustTryFoods || srvData.spec.foodMustTry || [];
+            srvData.spec.tips = srvData.spec.tips || (Array.isArray(srvData.spec.packingTips) ? srvData.spec.packingTips.join('；') : srvData.spec.packingTips) || '';
+            return srvData.spec;
+          }
+        }
+      } catch (e) { }
+
+      const errMsg = this.lastGeminiError || 'Gemini AI service is currently unavailable. Please check your API key or network connection.';
+      throw new Error(errMsg);
     }
   };
 
@@ -4100,6 +4219,370 @@ environment must be one of: "indoor", "outdoor", "any".`;
   }
 
   // =========================================================================
+  // 12.5. AI Travel Itinerary Planner System
+  // =========================================================================
+  let activeItineraryTripId = null;
+
+  function openItineraryModal(tripId) {
+    const trip = state.trips.find(t => t.id === tripId) || state.selectedTrip;
+    if (!trip) {
+      showToast('⚠️ No destination selected for itinerary planning.');
+      return;
+    }
+
+    activeItineraryTripId = trip.id;
+    const modal = document.getElementById('tripItineraryModal');
+    if (!modal) return;
+
+    // Header info
+    const titleEl = document.getElementById('itinTripTitle');
+    const locBadge = document.getElementById('itinLocationBadge');
+    if (titleEl) titleEl.textContent = trip.name;
+    if (locBadge) locBadge.textContent = trip.locationName || 'Destination';
+
+    // Populate duration options based on destination min/max days
+    const daysSelect = document.getElementById('itinDaysSelect');
+    if (daysSelect) {
+      daysSelect.innerHTML = '';
+      const minD = Math.max(1, (trip.minDays || 3) - 1);
+      const maxD = Math.max(trip.maxDays || 7, (trip.minDays || 3) + 2);
+      const existingDays = trip.itinerary && (trip.itinerary.targetDays || (trip.itinerary.days && trip.itinerary.days.length));
+      const defaultDays = existingDays || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
+
+      for (let d = minD; d <= maxD; d++) {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = `${d} Days Journey`;
+        if (d === defaultDays) opt.selected = true;
+        daysSelect.appendChild(opt);
+      }
+      // If existingDays wasn't within [minD, maxD], append and select it
+      if (existingDays && !Array.from(daysSelect.options).some(o => parseInt(o.value, 10) === existingDays)) {
+        const customOpt = document.createElement('option');
+        customOpt.value = existingDays;
+        customOpt.textContent = `${existingDays} Days Journey`;
+        customOpt.selected = true;
+        daysSelect.appendChild(customOpt);
+      }
+    }
+
+    // Set pace selector
+    const paceSelect = document.getElementById('itinPaceSelect');
+    if (paceSelect) {
+      paceSelect.value = (trip.itinerary && trip.itinerary.pace) || 'relaxed';
+    }
+
+    // Render content
+    renderItineraryContent(trip.itinerary, trip);
+
+    modal.style.display = 'flex';
+    sfx.whoosh();
+  }
+
+  function closeItineraryModal() {
+    const modal = document.getElementById('tripItineraryModal');
+    if (modal) {
+      modal.style.display = 'none';
+      sfx.tap();
+    }
+    activeItineraryTripId = null;
+  }
+
+  function renderItineraryContent(itinerary, trip) {
+    const container = document.getElementById('itinContentContainer');
+    const statusTag = document.getElementById('itinStatusTag');
+    const timeText = document.getElementById('itinGeneratedTimestamp');
+    const copyBtn = document.getElementById('btnCopyItinerary');
+    const clearBtn = document.getElementById('btnClearItinerary');
+    const notesSection = document.getElementById('itinNotesSection');
+    const notesInput = document.getElementById('itinNotesTextarea');
+
+    if (!container) return;
+
+    if (!itinerary || !Array.isArray(itinerary.days) || itinerary.days.length === 0) {
+      // Empty Starter State
+      const currentDays = document.getElementById('itinDaysSelect') ? document.getElementById('itinDaysSelect').value : 5;
+      container.innerHTML = `
+        <div class="itin-empty-state">
+          <div class="itin-empty-icon">🧭</div>
+          <h3 class="itin-empty-title">Start Planning Your Journey</h3>
+          <p class="itin-empty-desc">Let Gemini AI craft an evocative, well-paced couples starter canvas for <strong>${escapeHTML(trip ? trip.name : 'this destination')}</strong>—complete with morning, afternoon, and evening sights, sweet couple micro-moments, and local foodie highlights.</p>
+          <button class="btn btn-primary btn-sm" id="btnEmptyStateGen">✨ Generate Canvas (${currentDays} Days)</button>
+        </div>
+      `;
+      const emptyBtn = document.getElementById('btnEmptyStateGen');
+      if (emptyBtn) {
+        emptyBtn.addEventListener('click', generateActiveItinerary);
+      }
+      if (statusTag) statusTag.textContent = '✦ Ready to Plan';
+      if (timeText) timeText.textContent = '';
+      if (copyBtn) copyBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
+      if (notesSection) notesSection.style.display = 'none';
+      return;
+    }
+
+    // Populated State
+    if (statusTag) statusTag.textContent = '✨ AI Travel Canvas';
+    if (timeText) {
+      const dateStr = itinerary.generatedAt ? new Date(itinerary.generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      timeText.textContent = dateStr ? `Generated ${dateStr}` : '';
+    }
+    if (copyBtn) copyBtn.style.display = 'inline-flex';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+    if (notesSection) {
+      notesSection.style.display = 'block';
+      if (notesInput) notesInput.value = itinerary.notes || '';
+    }
+
+    const paceLabels = {
+      relaxed: '☕ Relaxed & Cozy',
+      balanced: '✨ Balanced Highlights',
+      active: '🏃 Active Exploration'
+    };
+    const paceStr = paceLabels[itinerary.pace] || itinerary.pace || 'Relaxed';
+
+    let html = `
+      <div class="itin-summary-card">
+        <div class="itin-summary-text">${escapeHTML(itinerary.summary || '')}</div>
+        <div class="itin-summary-pills">
+          <span class="pill pill-cyan">${itinerary.targetDays || itinerary.days.length} Days</span>
+          <span class="pill pill-purple">${escapeHTML(paceStr)}</span>
+          ${itinerary.model ? `<span class="pill" style="background:rgba(255,255,255,0.06); color:var(--text-muted); font-size:0.75rem;">🤖 ${escapeHTML(itinerary.model)}</span>` : ''}
+        </div>
+      </div>
+
+      <div class="itin-timeline">
+    `;
+
+    itinerary.days.forEach(d => {
+      html += `
+        <div class="itin-day-card">
+          <div class="itin-day-header">
+            <span class="itin-day-badge">Day ${d.day}</span>
+            <div class="itin-day-title">${escapeHTML(d.theme || '')}</div>
+          </div>
+          <div class="itin-slot-row">
+            <span class="itin-slot-icon">🌅</span>
+            <div class="itin-slot-content">
+              <strong>Morning:</strong> ${escapeHTML(d.morning || '')}
+            </div>
+          </div>
+          <div class="itin-slot-row">
+            <span class="itin-slot-icon">☀️</span>
+            <div class="itin-slot-content">
+              <strong>Afternoon:</strong> ${escapeHTML(d.afternoon || '')}
+            </div>
+          </div>
+          <div class="itin-slot-row">
+            <span class="itin-slot-icon">🌙</span>
+            <div class="itin-slot-content">
+              <strong>Evening:</strong> ${escapeHTML(d.evening || '')}
+            </div>
+          </div>
+          ${d.coupleHighlight ? `
+            <div class="itin-couple-highlight">
+              <span style="font-size:1.1rem; flex-shrink: 0;">💖</span>
+              <div>
+                <strong>Couple Moment:</strong> ${escapeHTML(d.coupleHighlight)}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+
+    html += `</div>`; // end itin-timeline
+
+    // Info Grid (Foods & Tips)
+    const hasFoods = Array.isArray(itinerary.mustTryFoods) && itinerary.mustTryFoods.length > 0;
+    const hasTips = Boolean(itinerary.tips);
+    if (hasFoods || hasTips) {
+      html += `<div class="itin-info-grid">`;
+      if (hasFoods) {
+        html += `
+          <div class="itin-info-card">
+            <div class="itin-info-title"><span>🍜</span> Must-Try Local Delicacies</div>
+            <div class="itin-tag-list">
+              ${itinerary.mustTryFoods.map(f => `<span class="itin-tag-pill">${escapeHTML(f)}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+      if (hasTips) {
+        html += `
+          <div class="itin-info-card">
+            <div class="itin-info-title"><span>💡</span> Practical Travel Tips</div>
+            <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; margin: 0;">${escapeHTML(itinerary.tips)}</p>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  async function generateActiveItinerary() {
+    if (!activeItineraryTripId) {
+      if (state.selectedTrip) activeItineraryTripId = state.selectedTrip.id;
+      else return;
+    }
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (!trip) {
+      showToast('⚠️ Destination not found.');
+      return;
+    }
+
+    const daysSelect = document.getElementById('itinDaysSelect');
+    const paceSelect = document.getElementById('itinPaceSelect');
+    const targetDays = daysSelect ? parseInt(daysSelect.value, 10) : 5;
+    const pace = paceSelect ? paceSelect.value : 'relaxed';
+
+    const btn = document.getElementById('btnGenerateItinerary');
+    const textSpan = document.getElementById('btnItinGenText');
+    const spinnerSpan = document.getElementById('btnItinGenSpinner');
+    const container = document.getElementById('itinContentContainer');
+
+    if (btn) btn.disabled = true;
+    if (textSpan) textSpan.style.display = 'none';
+    if (spinnerSpan) spinnerSpan.style.display = 'inline-block';
+
+    // Show shimmer loading state
+    if (container) {
+      container.innerHTML = `
+        <div class="itin-loading-state">
+          <div class="ai-pulse-orb" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); animation: pulseOrb 1.5s infinite; margin-bottom: 6px;"></div>
+          <h4 style="color:#fff; font-size:1.05rem; margin:0;">Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...</h4>
+          <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Crafting daily highlights, sweet couple moments, and authentic foodie spots</p>
+          <div class="itin-shimmer-box" style="margin-top: 14px;"></div>
+          <div class="itin-shimmer-box" style="height: 80px; opacity: 0.7;"></div>
+          <div class="itin-shimmer-box" style="height: 80px; opacity: 0.5;"></div>
+        </div>
+      `;
+    }
+
+    try {
+      const generatedSpec = await aiEngine.generateItinerary(trip, { targetDays, pace });
+      if (!generatedSpec || !Array.isArray(generatedSpec.days)) {
+        throw new Error('AI returned an invalid itinerary structure.');
+      }
+
+      // Preserve existing couple notes if any
+      if (trip.itinerary && trip.itinerary.notes) {
+        generatedSpec.notes = trip.itinerary.notes;
+      }
+
+      trip.itinerary = generatedSpec;
+      trip.updatedAt = Date.now();
+      saveData();
+
+      renderItineraryContent(trip.itinerary, trip);
+      if (state.selectedTrip && state.selectedTrip.id === trip.id) {
+        renderSelectedTripCard();
+      }
+      renderTripsTable();
+
+      showToast(`✨ Generated ${targetDays}-Day itinerary for ${trip.name}!`);
+      sfx.sparkle();
+      confetti.burst();
+    } catch (err) {
+      console.error('Failed to generate itinerary:', err);
+      showToast(`❌ Itinerary Error: ${err.message || 'AI request failed'}`);
+      renderItineraryContent(trip.itinerary, trip);
+    } finally {
+      if (btn) btn.disabled = false;
+      if (textSpan) textSpan.style.display = 'inline';
+      if (spinnerSpan) spinnerSpan.style.display = 'none';
+    }
+  }
+
+  function saveItineraryNotes() {
+    if (!activeItineraryTripId) return;
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (!trip || !trip.itinerary) return;
+
+    const input = document.getElementById('itinNotesTextarea');
+    if (!input) return;
+
+    trip.itinerary.notes = input.value.trim();
+    trip.updatedAt = Date.now();
+    saveData();
+    showToast('💾 Couple itinerary notes saved!');
+    sfx.stamp();
+  }
+
+  function clearItineraryPlan() {
+    if (!activeItineraryTripId) return;
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (!trip) return;
+
+    if (confirm(`Reset and clear the itinerary plan for "${trip.name}"?`)) {
+      delete trip.itinerary;
+      trip.updatedAt = Date.now();
+      saveData();
+      renderItineraryContent(null, trip);
+      if (state.selectedTrip && state.selectedTrip.id === trip.id) {
+        renderSelectedTripCard();
+      }
+      renderTripsTable();
+      showToast('🗑️ Itinerary plan reset.');
+      sfx.trash();
+    }
+  }
+
+  function copyItineraryToClipboard() {
+    if (!activeItineraryTripId) return;
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (!trip || !trip.itinerary) return;
+
+    const itin = trip.itinerary;
+    const coupleNames = getCoupleNames();
+    const days = itin.days || [];
+
+    let text = `✈️ 【${trip.name}】${itin.targetDays || days.length}天 專屬旅行規劃\n`;
+    text += `📍 地點：${trip.locationName || trip.name}\n`;
+    if (itin.summary) text += `✨ 旅程概述：${itin.summary}\n`;
+    text += `\n🗓️ 行程安排：\n`;
+
+    days.forEach(d => {
+      text += `\n【Day ${d.day}】${d.theme || ''}\n`;
+      if (d.morning) text += `• 🌅 早晨：${d.morning}\n`;
+      if (d.afternoon) text += `• ☀️ 午後：${d.afternoon}\n`;
+      if (d.evening) text += `• 🌙 夜晚：${d.evening}\n`;
+      if (d.coupleHighlight) text += `• 💖 浪漫時刻：${d.coupleHighlight}\n`;
+    });
+
+    if (Array.isArray(itin.mustTryFoods) && itin.mustTryFoods.length > 0) {
+      text += `\n🍜 必嚐在地美食：\n`;
+      itin.mustTryFoods.forEach(f => {
+        text += `• ${f}\n`;
+      });
+    }
+
+    if (itin.tips) {
+      text += `\n💡 實用小撇步：\n${itin.tips}\n`;
+    }
+
+    if (itin.notes) {
+      text += `\n📝 我們的筆記與備忘：\n${itin.notes}\n`;
+    }
+
+    text += `\n— 來自 Sync & Sway (${coupleNames}) 專屬旅行規劃`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 Itinerary copied to clipboard for LINE / Notes!');
+        sfx.chime();
+      }).catch(err => {
+        prompt('Copy your itinerary below:', text);
+      });
+    } else {
+      prompt('Copy your itinerary below:', text);
+    }
+  }
+
+  // =========================================================================
   // 13. Event Listeners Wiring
   // =========================================================================
   function setupEvents() {
@@ -4151,6 +4634,15 @@ environment must be one of: "indoor", "outdoor", "any".`;
       stEditBtn.addEventListener('click', () => {
         if (!state.selectedTrip) return;
         openEditTripModal(state.selectedTrip.id);
+      });
+    }
+
+    // Selected Trip Card Itinerary Button
+    const stItinBtn = document.getElementById('stItineraryBtn');
+    if (stItinBtn) {
+      stItinBtn.addEventListener('click', () => {
+        if (!state.selectedTrip) return;
+        openItineraryModal(state.selectedTrip.id);
       });
     }
 
@@ -4749,6 +5241,8 @@ environment must be one of: "indoor", "outdoor", "any".`;
         closeAddTripModal();
       } else if (id === 'addActivityModal') {
         closeAddActivityModal();
+      } else if (id === 'tripItineraryModal') {
+        closeItineraryModal();
       } else if (id === 'cloudSyncModal') {
         closeCloudSyncModal();
       } else if (id === 'themeModal') {
@@ -4760,7 +5254,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
     }
 
     // Close on backdrop click for all modals
-    ['addTripModal', 'addActivityModal', 'manageModal', 'cloudSyncModal', 'themeModal'].forEach(id => {
+    ['addTripModal', 'addActivityModal', 'manageModal', 'cloudSyncModal', 'themeModal', 'tripItineraryModal'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('click', (e) => {
@@ -4774,7 +5268,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
     // Close on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        ['addTripModal', 'addActivityModal', 'manageModal', 'cloudSyncModal', 'themeModal'].forEach(id => {
+        ['addTripModal', 'addActivityModal', 'manageModal', 'cloudSyncModal', 'themeModal', 'tripItineraryModal'].forEach(id => {
           const el = document.getElementById(id);
           if (el && el.style.display !== 'none') {
             closeModalById(id);
@@ -4782,6 +5276,34 @@ environment must be one of: "indoor", "outdoor", "any".`;
         });
       }
     });
+
+    // Itinerary Modal Action Buttons
+    const btnCloseItin = document.getElementById('btnCloseItineraryModal');
+    if (btnCloseItin) btnCloseItin.addEventListener('click', closeItineraryModal);
+    const btnCloseItinBtm = document.getElementById('btnCloseItineraryBottom');
+    if (btnCloseItinBtm) btnCloseItinBtm.addEventListener('click', closeItineraryModal);
+
+    const btnGenItin = document.getElementById('btnGenerateItinerary');
+    if (btnGenItin) btnGenItin.addEventListener('click', generateActiveItinerary);
+
+    const btnCopyItin = document.getElementById('btnCopyItinerary');
+    if (btnCopyItin) btnCopyItin.addEventListener('click', copyItineraryToClipboard);
+
+    const btnSaveNotes = document.getElementById('btnSaveItinNotes');
+    if (btnSaveNotes) btnSaveNotes.addEventListener('click', saveItineraryNotes);
+
+    const btnClearItin = document.getElementById('btnClearItinerary');
+    if (btnClearItin) btnClearItin.addEventListener('click', clearItineraryPlan);
+
+    const itinDaysSelect = document.getElementById('itinDaysSelect');
+    if (itinDaysSelect) {
+      itinDaysSelect.addEventListener('change', () => {
+        const emptyBtn = document.getElementById('btnEmptyStateGen');
+        if (emptyBtn) {
+          emptyBtn.textContent = `✨ Generate Canvas (${itinDaysSelect.value} Days)`;
+        }
+      });
+    }
 
     // Window resize handler for Leaflet map recalibration
     window.addEventListener('resize', () => {
@@ -4953,6 +5475,12 @@ environment must be one of: "indoor", "outdoor", "any".`;
             setView('trips');
             selectTrip(trip);
           }
+          return;
+        }
+        const itinBtn = e.target.closest('.btn-itinerary-table');
+        if (itinBtn) {
+          const tripId = itinBtn.dataset.id;
+          openItineraryModal(tripId);
           return;
         }
         const editBtn = e.target.closest('.btn-edit-table');
