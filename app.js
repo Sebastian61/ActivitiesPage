@@ -657,7 +657,7 @@
     seb_lynn: {
       id: 'seb_lynn',
       names: 'Seb & Lynn',
-      roomId: 'shared',
+      roomId: 'seb_lynn',
       storagePrefix: 'app_',
       theme: 'cosmic',
       icon: '🪐'
@@ -1781,7 +1781,7 @@
       if (!this.db) {
         if (!this.initFirebase()) return null;
       }
-      const roomId = (state.currentCouple && state.currentCouple.roomId) ? state.currentCouple.roomId : 'shared';
+      const roomId = (state.currentCouple && state.currentCouple.roomId) ? state.currentCouple.roomId : 'seb_lynn';
       return this.db.collection('couples_rooms').doc(roomId);
     },
 
@@ -1954,7 +1954,31 @@
         const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
 
         if (!doc.exists) {
-          // Document does not exist yet; seed it with current state or couple defaults
+          // If seb_lynn doesn't exist yet, check if legacy 'shared' exists to migrate all existing data
+          if (isSebLynn && docRef.id === 'seb_lynn') {
+            this.db.collection('couples_rooms').doc('shared').get().then((sharedSnap) => {
+              if (sharedSnap && sharedSnap.exists) {
+                const sharedData = sharedSnap.data();
+                docRef.set({
+                  ...sharedData,
+                  updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  lastUpdatedBy: this.getDeviceId()
+                }).catch(e => console.warn('seb_lynn migration copy notice:', e));
+                this.applyRemoteData(sharedData, true);
+                isInitialSnapshot = false;
+                return;
+              }
+              // If shared didn't exist either, seed from local state or defaults
+              seedEmptyRoom();
+            }).catch(() => seedEmptyRoom());
+            return;
+          }
+
+          seedEmptyRoom();
+          return;
+        }
+
+        function seedEmptyRoom() {
           const seedActs = isSebLynn
             ? (state.activities && state.activities.length ? state.activities : cloneDefaults(window.DEFAULT_ACTIVITIES))
             : (state.activities && state.activities.length ? state.activities : cloneDefaults(window.DEFAULT_VA_ACTIVITIES));
@@ -1967,10 +1991,9 @@
             deletedTripIds: Array.from(state.deletedTripIds || []),
             deletedActivityIds: Array.from(state.deletedActivityIds || []),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastUpdatedBy: this.getDeviceId()
+            lastUpdatedBy: cloudSync.getDeviceId()
           });
           isInitialSnapshot = false;
-          return;
         }
 
         const data = doc.data();
@@ -3801,7 +3824,7 @@
       if (!key && typeof firebase !== 'undefined' && firebase.firestore && typeof COUPLE_PROFILES !== 'undefined') {
         try {
           const db = firebase.firestore();
-          const defaultRoomId = (COUPLE_PROFILES.seb_lynn && COUPLE_PROFILES.seb_lynn.roomId) || 'shared';
+          const defaultRoomId = (COUPLE_PROFILES.seb_lynn && COUPLE_PROFILES.seb_lynn.roomId) || 'seb_lynn';
           const sharedSnap = await db.collection('couples_rooms').doc(defaultRoomId).get();
           if (sharedSnap && sharedSnap.exists) {
             const sData = sharedSnap.data();

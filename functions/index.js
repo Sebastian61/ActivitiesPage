@@ -21,7 +21,7 @@ const SALT_USERS = [
     name: 'Seb',
     avatar: '✨',
     coupleId: 'seb_lynn',
-    roomId: 'shared',
+    roomId: 'seb_lynn',
     hashes: getEnvHashes(process.env.SEB_HASH)
   },
   {
@@ -29,7 +29,7 @@ const SALT_USERS = [
     name: 'Lynn',
     avatar: '🌸',
     coupleId: 'seb_lynn',
-    roomId: 'shared',
+    roomId: 'seb_lynn',
     hashes: getEnvHashes(process.env.LYNN_HASH)
   },
   {
@@ -197,12 +197,12 @@ exports.secureSync = functions.https.onRequest(async (req, res) => {
   }
 
   const roomMap = {
-    'seb_user': 'shared',
-    'lynn_user': 'shared',
+    'seb_user': 'seb_lynn',
+    'lynn_user': 'seb_lynn',
     'vincent_user': 'vincent_alice',
     'alice_user': 'vincent_alice'
   };
-  const roomId = roomMap[decodedToken.uid] || 'shared';
+  const roomId = roomMap[decodedToken.uid] || 'seb_lynn';
   const docRef = admin.firestore().collection('couples_rooms').doc(roomId);
 
   if (req.method === 'GET') {
