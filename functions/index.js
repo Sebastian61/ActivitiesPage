@@ -431,6 +431,6 @@ environment must be one of: "indoor", "outdoor", "any".`;
     }
   }
 
-  return res.json({ success: false, fallback: true });
+  return res.status(503).json({ success: false, error: 'Gemini AI service is currently unavailable.' });
 });
 

@@ -25,7 +25,7 @@
         if (this.ctx && this.ctx.state === 'suspended') {
           this.ctx.resume();
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Helper: generate procedural white noise buffer for whooshes, card snaps, and paper rustles
@@ -63,7 +63,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.035);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 2. Bubble Pop (Clicking badges, counter chips with natural random variation)
@@ -85,7 +85,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.045);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 3. Shimmer / Magic Sparkle (AI generation success, atmosphere theme changes)
@@ -110,7 +110,7 @@
           osc.start(startTime);
           osc.stop(startTime + 0.28);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 4. Aerodynamic Whoosh (Tab switches, modal slide-ins, map flight)
@@ -143,7 +143,7 @@
           source.start(t);
           source.stop(t + duration);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 5. Paper Card Flip (Card randomizer, eliminator veto)
@@ -183,7 +183,7 @@
           source.start(t);
           source.stop(t + 0.04);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 6. Slot Machine Wheel Click (Decelerating clicks during spinning)
@@ -205,7 +205,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.022);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 7. Stamp / Success Affirmation (Checking date completed or destination visited)
@@ -241,7 +241,7 @@
           osc.start(t + 0.02);
           osc.stop(t + 0.02 + 0.35);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 8. Soft Undo / Uncheck
@@ -262,7 +262,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.06);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 9. Celebratory Chime / Major 9th Arpeggio (Winner chosen, spot saved, confetti)
@@ -287,7 +287,7 @@
           osc.start(startTime);
           osc.stop(startTime + 0.45);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 10. Sonar / Radar Ping (Map radar scanner & live cloud partner sync)
@@ -320,7 +320,7 @@
         gain2.connect(this.ctx.destination);
         osc2.start(t);
         osc2.stop(t + 0.25);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 11. Mechanical Lock Latch (Locking the space)
@@ -355,7 +355,7 @@
         gain2.connect(this.ctx.destination);
         osc2.start(t + 0.035);
         osc2.stop(t + 0.075);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 12. Warm Welcome Harmony (Passcode verified / login unlock)
@@ -380,7 +380,7 @@
           osc.start(startTime);
           osc.stop(startTime + 0.55);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 13. Gentle Error Nudge (Wrong passcode, invalid range input)
@@ -402,7 +402,7 @@
           osc.start(t + offset);
           osc.stop(t + offset + 0.05);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 14. Trash / Deletion Sweep (Item deleted)
@@ -423,7 +423,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.09);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 15. Dice Roll / Multi-Tumble Rattle (Card spin initiation)
@@ -447,7 +447,7 @@
           osc.start(t + offset);
           osc.stop(t + offset + 0.025);
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 16. Pure High Bell Shimmer / Coin Toss Ring
@@ -468,7 +468,7 @@
         gain.connect(this.ctx.destination);
         osc.start(t);
         osc.stop(t + 0.4);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Legacy alias
@@ -802,7 +802,7 @@
     legacyKeysToPurge.forEach(k => {
       try {
         localStorage.removeItem(k);
-      } catch (e) {}
+      } catch (e) { }
     });
   }
 
@@ -1041,7 +1041,7 @@
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
         firebase.auth().signOut().catch(e => console.warn('SignOut notice:', e));
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Detach Firestore listeners
@@ -1262,9 +1262,9 @@
       const overlayObserver = new MutationObserver(() => {
         if (state.isAuthenticated) return;
         if (overlay.classList.contains('unlocked') ||
-            overlay.style.display === 'none' ||
-            overlay.style.opacity === '0' ||
-            overlay.style.visibility === 'hidden') {
+          overlay.style.display === 'none' ||
+          overlay.style.opacity === '0' ||
+          overlay.style.visibility === 'hidden') {
           console.warn('Tampering detected: lockscreenOverlay visibility altered.');
           overlay.classList.remove('unlocked');
           overlay.style.removeProperty('display');
@@ -1375,7 +1375,7 @@
     state.deletedTripIds.add(tripId);
     try {
       localStorage.setItem(STORAGE_KEYS.DELETED_TRIPS, JSON.stringify(Array.from(state.deletedTripIds).slice(-300)));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function trackDeletedActivity(actId) {
@@ -1384,7 +1384,7 @@
     state.deletedActivityIds.add(actId);
     try {
       localStorage.setItem(STORAGE_KEYS.DELETED_ACTIVITIES, JSON.stringify(Array.from(state.deletedActivityIds).slice(-300)));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function saveLocalData() {
@@ -3055,7 +3055,7 @@
     document.getElementById('formTripDesc').value = '';
     const tagsInput = document.getElementById('formTripTags');
     if (tagsInput) tagsInput.value = '';
-    
+
     const minDaysInput = document.getElementById('formTripMinDays');
     if (minDaysInput) minDaysInput.value = '2';
     const maxDaysInput = document.getElementById('formTripMaxDays');
@@ -3104,7 +3104,7 @@
     const editCostInput = document.getElementById('formTripCostEstimate');
     if (editCostInput) editCostInput.value = trip.costEstimate || '';
     document.getElementById('formTripDesc').value = trip.description || '';
-    
+
     const tagsInput = document.getElementById('formTripTags');
     if (tagsInput) {
       tagsInput.value = (trip.tags && Array.isArray(trip.tags)) ? trip.tags.map(t => t.replace(/^#/, '')).join(', ') : '';
@@ -3198,7 +3198,7 @@
           if (lower.includes('pro')) rpd = 50;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     let req = 0;
     try {
@@ -3207,7 +3207,7 @@
       } else if (typeof aiUsageTracker !== 'undefined' && aiUsageTracker.getStats) {
         req = aiUsageTracker.getStats().todayRequests || 0;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return `(rpd ${req}/${rpd})`;
   }
@@ -3302,7 +3302,7 @@
               updatedAt: stats.updatedAt,
               customRpdLimit: customLimit
             }
-          }, { merge: true }).catch(() => {});
+          }, { merge: true }).catch(() => { });
         }
       } catch (e) {
         console.warn('Error saving AI usage stats:', e);
@@ -3359,7 +3359,7 @@
       if (docRef) {
         docRef.set({
           aiRpdLimit: num
-        }, { merge: true }).catch(() => {});
+        }, { merge: true }).catch(() => { });
       }
       this.updateUI();
       if (typeof sfx !== 'undefined' && sfx.tap) sfx.tap();
@@ -3391,7 +3391,7 @@
         const metaProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.MODELS_META) ? STORAGE_KEYS.MODELS_META : 'app_gemini_models_meta';
         const allMeta = JSON.parse(localStorage.getItem(metaProp) || '{}');
         if (allMeta && allMeta[model]) meta = allMeta[model];
-      } catch (e) {}
+      } catch (e) { }
 
       const lower = (model || '').toLowerCase();
       const rpdLimitKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.RPD_LIMIT) ? STORAGE_KEYS.RPD_LIMIT : 'app_gemini_custom_rpd_limit';
@@ -3698,11 +3698,11 @@
       let detectedModels = [];
       try {
         detectedModels = JSON.parse(localStorage.getItem('app_gemini_detected_models') || '[]');
-      } catch (e) {}
+      } catch (e) { }
       let modelsMeta = null;
       try {
         modelsMeta = JSON.parse(localStorage.getItem('app_gemini_models_meta') || 'null');
-      } catch (e) {}
+      } catch (e) { }
       populateModelSelect(detectedModels, modelsMeta);
 
       const activeModel = localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
@@ -3851,10 +3851,10 @@
     const defaultCostByBudget = budget === '$'
       ? '~NT$3,000 - 8,000 /人'
       : budget === '$$'
-      ? '~NT$10,000 - 25,000 /人'
-      : budget === '$$$'
-      ? '~NT$25,000 - 55,000 /人'
-      : '~NT$65,000 - 120,000 /人';
+        ? '~NT$10,000 - 25,000 /人'
+        : budget === '$$$'
+          ? '~NT$25,000 - 55,000 /人'
+          : '~NT$65,000 - 120,000 /人';
 
     const newTrip = {
       id: 'trip_' + (Date.now()),
@@ -4019,584 +4019,9 @@
   }
 
   // =========================================================================
-  // 12. AI Smart Assistant Engine (Gemini 2.5 Flash + OpenStreetMap Nominatim)
+  // 12. AI Smart Assistant Engine (Gemini Direct + Serverless)
   // =========================================================================
   const aiEngine = {
-    // Great-Circle distance formula (km) between two coordinates
-    calcDistanceKm(lat1, lon1, lat2, lon2) {
-      const R = 6371; // Earth radius in km
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    },
-
-    // Curated high-accuracy dream landmarks & extreme geography (instant zero-latency match & polar disambiguation)
-    KNOWN_LANDMARKS: [
-      {
-        aliases: ['北極', '北極點', '北極海', '北極圈', '北冰洋', 'north pole', 'the north pole', 'arctic', 'arctic ocean', '北极', '北极点', '北极圈'],
-        spec: {
-          lat: 85.0,
-          lng: 0.0,
-          locationName: 'Arctic Ocean / North Pole ❄️',
-          minDays: 10,
-          maxDays: 16,
-          budget: '$$$$',
-          costEstimate: '~NT$280,000 - 550,000 /人',
-          seasons: ['winter', 'summer'],
-          tags: ['#北極點90度', '#破冰船巡航', '#極光玻璃屋', '#無垠冰原', '#北極熊出沒', '#極致探險'],
-          nameTemplates: [
-            '北極頂峰極地破冰巡航與極光之約 🚢🌌',
-            '北極圈夢幻冰原與午夜陽光探險 ❄️☀️',
-            '北極點無垠純白世界與藍冰星空假期 ❄️✨',
-            '極地破冰船漫遊與北極光玻璃屋私語 🚢❄️'
-          ],
-          descriptionTemplates: [
-            '搭乘頂級極地破冰船航向世界頂端90度北極點，在無垠純白冰原上與最愛的人相擁舉杯，仰望躍動的夢幻極光帷幕。夜幕降臨時入住暖心探險艙，在冷冽純淨的空氣中感受遠離塵囂、屬於兩個人的純粹感動。',
-            '穿梭在萬年湛藍浮冰與靜謐極地海域間，尋訪北極熊與白鯨足跡。夜宿全景極光玻璃艙，在壁爐柴火微光中共享熱湯，將世界之巔的壯闊與溫柔深印兩人心中。',
-            '置身地球頂端的冰洋盡頭，在午夜永晝暖陽或燦爛星河下漫步厚實冰蓋，吹著極地純淨冷風，在天地大美前見證專屬彼此的永恆浪漫。'
-          ]
-        }
-      },
-      {
-        aliases: ['南極', '南極點', '南極洲', '南極大陸', 'south pole', 'the south pole', 'antarctica', 'antarctic', '南极', '南极点', '南极洲'],
-        spec: {
-          lat: -82.0,
-          lng: 0.0,
-          locationName: 'Antarctica 🇦🇶',
-          minDays: 12,
-          maxDays: 18,
-          budget: '$$$$',
-          costEstimate: '~NT$320,000 - 620,000 /人',
-          seasons: ['summer'],
-          tags: ['#第七大陸', '#世界盡頭', '#國王企鵝', '#德瑞克海峽', '#藍冰露營', '#白色大陸'],
-          nameTemplates: [
-            '南極冰川巡航與企鵝王國世界盡頭之旅 🐧❄️',
-            '南極半島極地探險與夢幻藍冰露營 🇦🇶',
-            '航向第七大陸：南極冰海與純白世界誓言 🚢❄️',
-            '世界盡頭冰原漫步與南十字星空之約 🌌🐧'
-          ],
-          descriptionTemplates: [
-            '穿越傳奇德瑞克海峽登上白色第七大陸，在成千上萬可愛企鵝圍繞下漫步冰原，在靜謐藍色冰山前許下世界盡頭的永恆誓言。夜晚在零下純淨空氣中相伴依偎，仰望浩瀚無垠的南十字星空。',
-            '划著探險獨木舟穿行於幽藍巨大冰山裂隙間，聆聽浮冰碎裂清脆聲響與鯨魚噴氣音。夜宿雪地專屬帳篷，體驗一生一次世界盡頭的極致靜謐與心動。'
-          ]
-        }
-      },
-      {
-        aliases: ['聖誕老人村', '羅瓦涅米', '拉普蘭', '芬蘭聖誕老人村', 'rovaniemi', 'lapland', 'santa claus village'],
-        spec: {
-          lat: 66.5436,
-          lng: 25.8473,
-          locationName: 'Lapland, Finland 🇫🇮',
-          minDays: 7,
-          maxDays: 10,
-          budget: '$$$$',
-          costEstimate: '~NT$90,000 - 150,000 /人',
-          seasons: ['winter'],
-          tags: ['#聖誕老人村', '#北極圈跨線', '#極光玻璃屋', '#馴鹿雪橇', '#哈士奇拉雪橇'],
-          nameTemplates: [
-            '芬蘭聖誕老人村童話與極光玻璃屋假期 🎅✨',
-            '拉普蘭雪國馴鹿漫步與北極圈極光之約 🦌🌌',
-            '羅瓦涅米純白童話森林與夢幻雪橇漫遊 ❄️🌲'
-          ],
-          descriptionTemplates: [
-            '跨越北極圈緯度線造訪聖誕老人辦公室寄出心願明信片，搭乘馴鹿雪橇穿越靜謐積雪黑森林。夜晚躺在恆溫全景玻璃屋中，牽手等待綠色極光如彩帶般在夜空輕盈舞動。'
-          ]
-        }
-      },
-      {
-        aliases: ['格陵蘭', '格陵蘭島', '伊盧利薩特', 'greenland', 'ilulissat'],
-        spec: {
-          lat: 69.2198,
-          lng: -51.0986,
-          locationName: 'Ilulissat, Greenland 🇬🇱',
-          minDays: 8,
-          maxDays: 12,
-          budget: '$$$$',
-          costEstimate: '~NT$120,000 - 180,000 /人',
-          seasons: ['summer', 'winter'],
-          tags: ['#伊盧利薩特冰峽灣', '#彩色小木屋', '#萬年藍冰', '#狗拉雪橇', '#午夜太陽'],
-          nameTemplates: [
-            '格陵蘭冰峽灣壯闊巡航與彩色木屋漫遊 🇬🇱🧊',
-            '伊盧利薩特萬年巨型浮冰與純白極地秘境 ❄️✨'
-          ],
-          descriptionTemplates: [
-            '漫步於世界自然遺產伊盧利薩特冰峽灣木棧道，俯瞰數十公尺高的蔚藍浮冰在海面靜靜漂移。在繽紛彩色木屋前喝一杯熱巧克力，感受世界邊緣最純淨空靈的兩人時光。'
-          ]
-        }
-      },
-      {
-        aliases: ['馬爾地夫', '馬爾代夫', 'maldives'],
-        spec: {
-          lat: 3.2028,
-          lng: 73.2207,
-          locationName: 'Maldives 🇲🇻',
-          minDays: 5,
-          maxDays: 8,
-          budget: '$$$$',
-          costEstimate: '~NT$85,000 - 160,000 /人',
-          seasons: ['winter', 'spring', 'all'],
-          tags: ['#水上Villa', '#玻璃海', '#漂浮早餐', '#魔鬼氈浮潛', '#私人沙灘夕陽'],
-          nameTemplates: [
-            '馬爾地夫水上Villa與果凍海落日微醺之行 🇲🇻🏝️',
-            '馬爾地夫蔚藍珊瑚海與無邊星空蜜月假期 🌊🍹',
-            '印度洋珍珠島嶼：無邊際海景與雙人放空之旅 🏝️✨'
-          ],
-          descriptionTemplates: [
-            '推開水上Villa落地窗直接躍入果凍般透明的印度洋潟湖，與熱帶魚和溫柔魟魚同游。黃昏在無邊際泳池享用香檳與雙人燭光晚餐，在滿天星斗下聆聽微波拍岸的輕柔催眠曲。'
-          ]
-        }
-      },
-      {
-        aliases: ['夏威夷', 'hawaii', 'oahu', 'honolulu', '檀香山'],
-        spec: {
-          lat: 21.3069,
-          lng: -157.8583,
-          locationName: 'Hawaii, USA 🇺🇸',
-          minDays: 6,
-          maxDays: 9,
-          budget: '$$$$',
-          costEstimate: '~NT$75,000 - 120,000 /人',
-          seasons: ['all', 'summer'],
-          tags: ['#威基基海灘', '#鑽石頭山日出', '#恐龍灣浮潛', '#阿囉哈熱情', '#海邊落日晚餐'],
-          nameTemplates: [
-            '夏威夷威基基海灘漫步與落日微風公路巡禮 🌺🚗',
-            '夏威夷蔚藍浪花衝浪與火山星空浪漫漫遊 🏝️✨'
-          ],
-          descriptionTemplates: [
-            '沿著歐胡島絕美海岸線敞篷自駕，在鑽石頭山頂俯瞰太平洋無垠蔚藍與威基基金色沙灘。傍晚戴上海島花圈伴著烏克麗麗琴聲漫步海邊，在橘紅色晚霞裡感受最溫暖的Aloha愛意。'
-          ]
-        }
-      },
-      {
-        aliases: ['富士山', '河口湖', 'mount fuji', 'mt fuji'],
-        spec: {
-          lat: 35.3606,
-          lng: 138.7274,
-          locationName: 'Mount Fuji & Lake Kawaguchi, Japan 🇯🇵',
-          minDays: 3,
-          maxDays: 5,
-          budget: '$$$',
-          costEstimate: '~NT$32,000 - 52,000 /人',
-          seasons: ['autumn', 'spring', 'winter'],
-          tags: ['#河口湖逆富士', '#露天溫泉飯店', '#楓葉迴廊', '#富士急樂園', '#芝櫻季'],
-          nameTemplates: [
-            '河口湖富士山晨曦倒影與露天溫泉漫遊 🗻♨️',
-            '富士山麓四季花海與日式溫泉旅宿巡禮 🌸🗻'
-          ],
-          descriptionTemplates: [
-            '清晨在河口湖畔露台遠眺初升朝陽染紅富士山雪頂，在如鏡水面上捕捉珍貴的逆富士奇景。夜宿純日式溫泉旅館享用精緻懷石料理，在熱氣氤氳的露天風呂中相擁放鬆。'
-          ]
-        }
-      },
-      {
-        aliases: ['黃石公園', '黃石國家公園', 'yellowstone'],
-        spec: {
-          lat: 44.4280,
-          lng: -110.5885,
-          locationName: 'Yellowstone National Park, USA 🇺🇸',
-          minDays: 6,
-          maxDays: 9,
-          budget: '$$$$',
-          costEstimate: '~NT$85,000 - 140,000 /人',
-          seasons: ['summer', 'autumn'],
-          tags: ['#大稜鏡溫泉', '#老忠實間歇泉', '#野生美洲野牛', '#峽谷瀑布', '#星空露營'],
-          nameTemplates: [
-            '黃石公園大稜鏡七彩溫泉與壯麗峽谷自駕探險 🦬🌈',
-            '黃石國家公園野生曠野與間歇泉奇觀漫遊 🌲✨'
-          ],
-          descriptionTemplates: [
-            '自駕穿越壯闊的原野森林，在彩虹般絢爛的大稜鏡溫泉前驚嘆大自然的奇蹟調色盤。黃昏在草原邊緣靜靜等待野牛群踏著暮色踱步，仰望無光害的浩瀚銀河沉醉天地浩瀚。'
-          ]
-        }
-      },
-      {
-        aliases: ['馬丘比丘', '印加古道', 'machu picchu'],
-        spec: {
-          lat: -13.1631,
-          lng: -72.5450,
-          locationName: 'Machu Picchu, Peru 🇵🇪',
-          minDays: 8,
-          maxDays: 12,
-          budget: '$$$$',
-          costEstimate: '~NT$110,000 - 180,000 /人',
-          seasons: ['summer', 'spring', 'autumn'],
-          tags: ['#天空之城', '#印加失落之城', '#全景景觀火車', '#庫斯科古城', '#草泥馬同框'],
-          nameTemplates: [
-            '秘魯馬丘比丘天空之城與印加古道神秘探秘 🇵🇪🦙',
-            '庫斯科高山古城與馬丘比丘晨曦雲海巡禮 ⛰️✨'
-          ],
-          descriptionTemplates: [
-            '搭乘全景玻璃景觀火車穿過安地斯山脈奔騰河谷，清晨登上馬丘比丘石砌露台，看晨霧散去展現壯麗的天空之城。在可愛羊駝好奇圍繞下並肩前行，感受古老文明的神秘與震撼。'
-          ]
-        }
-      },
-      {
-        aliases: ['天空之鏡', '烏尤尼鹽沼', '烏尤尼', 'uyuni', 'salar de uyuni'],
-        spec: {
-          lat: -20.1338,
-          lng: -67.4891,
-          locationName: 'Salar de Uyuni, Bolivia 🇧🇴',
-          minDays: 7,
-          maxDays: 10,
-          budget: '$$$$',
-          costEstimate: '~NT$120,000 - 190,000 /人',
-          seasons: ['winter', 'spring'],
-          tags: ['#天空之鏡', '#極致星空倒影', '#鹽晶旅館', '#仙人掌島', '#日落倒影'],
-          nameTemplates: [
-            '玻利維亞烏尤尼天空之鏡與浩瀚星河倒影之夜 🇧🇴🌌',
-            '純白萬里鹽沼與夢幻天空之鏡日落巡航 🪞✨'
-          ],
-          descriptionTemplates: [
-            '站在水天相連的無邊白色鏡面上，黃昏時分看漫天晚霞如畫筆般倒映於腳下，彷彿置身雲端漫步。深夜仰望無邊星空與腳底銀河融為一體，在天地倒影裡許下最深刻的浪漫回憶。'
-          ]
-        }
-      },
-      {
-        aliases: ['聖托里尼', '伊亞', '費拉', 'santorini', 'oia'],
-        spec: {
-          lat: 36.3932,
-          lng: 25.4615,
-          locationName: 'Santorini, Greece 🇬🇷',
-          minDays: 5,
-          maxDays: 8,
-          budget: '$$$$',
-          costEstimate: '~NT$85,000 - 145,000 /人',
-          seasons: ['spring', 'summer', 'autumn'],
-          tags: ['#藍頂教堂', '#伊亞世界最美夕陽', '#白雪洞穴屋', '#愛琴海藍', '#懸崖泳池'],
-          nameTemplates: [
-            '聖托里尼藍頂教堂與伊亞世界最美落日假期 🇬🇷🌅',
-            '愛琴海純白懸崖洞穴屋與無邊海景微醺之約 🍷🌊'
-          ],
-          descriptionTemplates: [
-            '穿梭在愛琴海峭壁上如糖霜般潔白的洞穴小屋與湛藍圓頂教堂之間，空氣中瀰漫著九重葛花香與海風。黃昏在伊亞懸崖露台端起白葡萄酒，並肩凝視被譽為全球最美的金色夕陽沉入海平面。'
-          ]
-        }
-      },
-      {
-        aliases: ['威尼斯', '威尼斯運河', 'venice', 'venezia'],
-        spec: {
-          lat: 45.4408,
-          lng: 12.3155,
-          locationName: 'Venice, Italy 🇮🇹',
-          minDays: 4,
-          maxDays: 6,
-          budget: '$$$$',
-          costEstimate: '~NT$75,000 - 120,000 /人',
-          seasons: ['spring', 'autumn'],
-          tags: ['#貢多拉遊船', '#聖馬可廣場', '#嘆息橋', '#彩色島Burano', '#水都迷宮'],
-          nameTemplates: [
-            '威尼斯水都貢多拉浪漫穿梭與聖馬可廣場微醺 🛶🎭',
-            '水上之都運河迷宮與彩色島童話石板漫遊 🇮🇹✨'
-          ],
-          descriptionTemplates: [
-            '並肩乘著優雅的黑色貢多拉划過靜謐古老水巷，在船夫悠揚歌聲中穿過一座座石拱橋與水中倒影。黃昏漫步至聖馬可廣場露天咖啡座聆聽古典樂合奏，在微光水波映照中沈醉於水都柔情。'
-          ]
-        }
-      },
-      {
-        aliases: ['杜拜', 'dubai'],
-        spec: {
-          lat: 25.2048,
-          lng: 55.2708,
-          locationName: 'Dubai, UAE 🇦🇪',
-          minDays: 4,
-          maxDays: 6,
-          budget: '$$$$',
-          costEstimate: '~NT$65,000 - 110,000 /人',
-          seasons: ['winter', 'spring', 'autumn'],
-          tags: ['#哈里發塔', '#金色沙漠衝沙', '#未來博物館', '#帆船飯店', '#噴泉水舞秀'],
-          nameTemplates: [
-            '杜拜哈里發塔天際奇蹟與金色沙漠星空營火之夜 🇦🇪🐪',
-            '未來建築美學與海灣帆船酒店奢華漫遊 ✨🏙️'
-          ],
-          descriptionTemplates: [
-            '登上世界第一高樓哈里發塔俯瞰現代阿拉伯海灣的奢華天際線與璀璨水舞秀。黃昏乘四驅車馳騁於金色沙丘體驗刺激衝沙，夜晚在沙漠營火與貝都因帳篷下品味香濃咖啡與漫天繁星。'
-          ]
-        }
-      }
-    ],
-
-    findKnownLandmark(query) {
-      const norm = query.toLowerCase().replace(/[\s\-_,，。！？!]/g, '');
-      if (!norm) return null;
-      for (const item of this.KNOWN_LANDMARKS) {
-        if (item.aliases.some(a => {
-          const aNorm = a.toLowerCase().replace(/[\s\-_,，。！？!]/g, '');
-          return norm === aNorm || (aNorm.length >= 2 && norm.includes(aNorm));
-        })) {
-          return item.spec;
-        }
-      }
-      return null;
-    },
-
-    async geocodeNominatim(place) {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=en,zh-TW,zh&q=${encodeURIComponent(place)}`;
-      const resp = await fetch(url, {
-        headers: { 'Accept': 'application/json' }
-      });
-      if (!resp.ok) throw new Error('Geocoding service unavailable');
-      const data = await resp.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error(`Location "${place}" not found on map.`);
-      }
-
-      let best = data[0];
-      let lat = parseFloat(best.lat);
-      let lng = parseFloat(best.lon);
-      let displayName = best.display_name;
-
-      // Polar & Extreme Geography Safety Guard
-      if (/北極|north\s*pole|arctic/i.test(place)) {
-        if (lat < 65) {
-          lat = 85.0;
-          lng = 0.0;
-          displayName = 'Arctic Ocean / North Pole ❄️';
-        }
-      } else if (/南極|south\s*pole|antarctica/i.test(place)) {
-        if (lat > -60) {
-          lat = -82.0;
-          lng = 0.0;
-          displayName = 'Antarctica 🇦🇶';
-        }
-      }
-
-      return {
-        lat: Math.max(-85.0, Math.min(85.0, lat)),
-        lng: Math.max(-180.0, Math.min(180.0, lng)),
-        displayName
-      };
-    },
-
-    detectTheme(query, locationName) {
-      const text = `${query} ${locationName}`.toLowerCase();
-      if (/北極|南極|極地|格陵蘭|冰島|挪威|哈爾濱|雪|滑雪|冰川|極光|破冰|snow|ski|aurora|arctic|antarctic|glacier/i.test(text)) {
-        return 'polar';
-      }
-      if (/沖繩|澎湖|綠島|蘭嶼|小琉球|墾丁|峇里島|巴厘島|普吉島|蘇美島|長灘島|馬爾地夫|夏威夷|關島|塞席爾|帛琉|宿霧|海|沙灘|島|浮潛|潛水|珊瑚|浪|beach|island|ocean|surf|dive/i.test(text)) {
-        return 'beach';
-      }
-      if (/阿里山|杉林溪|太平山|清境|日月潭|太魯閣|陽明山|瑞士|少女峰|洛磯山脈|班夫|優勝美地|黃石|山|峰|峽谷|森林|步道|神木|瀑布|湖|露營|mountain|lake|canyon|alpine|forest|trail/i.test(text)) {
-        return 'mountain';
-      }
-      if (/法國|巴黎|義大利|羅馬|威尼斯|佛羅倫斯|英國|倫敦|奧地利|維也納|捷克|布拉格|希臘|聖托里尼|西班牙|巴塞隆納|葡萄牙|里斯本|歐洲|古堡|塞納河|europe|france|paris|italy|venice|greece|spain|london/i.test(text)) {
-        return 'european';
-      }
-      if (/日本|京都|奈良|金澤|淺草|鎌倉|首爾|北村|台南|鹿港|大稻埕|九份|老街|古都|古蹟|寺|宮殿|抹茶|溫泉|懷舊|japan|kyoto|korea|seoul|taiwan/i.test(text)) {
-        return 'eastAsian';
-      }
-      if (/東京|紐約|曼哈頓|香港|新加坡|芝加哥|雪梨|上海|台北|信義區|天際線|夜景|摩登|都會|酒吧|百貨|skyline|city|manhattan|new york|tokyo|sydney/i.test(text)) {
-        return 'metropolis';
-      }
-      return 'universal';
-    },
-
-    generateCreativeTripTitle(place, theme, flagEmoji) {
-      let core = place.replace(/[0-9\-_,，。！？!]/g, '').trim();
-      if (core.length > 4) {
-        core = core.replace(/(風景區|國家公園|渡假區|景區|觀光區|特區|旅遊區|之旅|旅行)$/g, '');
-      }
-
-      const collections = {
-        polar: [
-          `${core}極地破冰巡航與極光玻璃屋之約 🚢🌌`,
-          `${core}純白雪景童話與雪見露天溫泉假期 ❄️♨️`,
-          `${core}萬年藍冰洞探訪與夢幻雪原漫遊 ❄️✨`,
-          `${core}午夜陽光與極光之吻冰原冒險 🧊☀️`,
-          `${core}銀白世界漫步與壁爐暖心夜曲 ❄️🍷`
-        ],
-        beach: [
-          `${core}蔚藍玻璃海跳島與落日微醺之行 🏝️🍹`,
-          `${core}果凍海海龜共游與無邊際Villa假期 🌊🐢`,
-          `${core}海風微醺公路自駕與金黃晚霞漫步 🚗🌅`,
-          `${core}細白沙灘漫步與星空浪花慢漫遊 🏝️✨`,
-          `${core}珊瑚礁秘境浮潛與海景落日巡禮 🐠🍹`
-        ],
-        mountain: [
-          `${core}高山森林鐵道與浩瀚雲海晨曦之約 🌲🚂`,
-          `${core}壯闊峽谷探訪與湖畔隱世慢活之旅 🏔️🌿`,
-          `${core}巨木芬多精健行與星空露營假期 🏕️🌌`,
-          `${core}山林溪流深呼吸與私房秘境散策 🍃✨`,
-          `${core}翠綠縱谷公路奔馳與溫泉療癒行 🚗♨️`
-        ],
-        european: [
-          `${core}塞納河畔藝術巡禮與石階左岸漫步 ☕🎨`,
-          `${core}中世紀古堡漫步與湖光山色童話假期 🏰✨`,
-          `${core}石板巷弄黃昏散策與微醺酒莊之約 🍷🏛️`,
-          `${core}百年運河水波漫遊與文藝復興巡禮 🛶✨`,
-          `${core}露天咖啡座午後小憩與浪漫街角探尋 ☕🥐`
-        ],
-        eastAsian: [
-          `${core}古都石板巷弄慢步與在地私房美饌 🏮🍵`,
-          `${core}百年日式官舍漫步與抹茶庭園散策 🍵🌸`,
-          `${core}文創老街手作尋幽與燈海夜市漫遊 🎨🏮`,
-          `${core}晨光古寺巡禮與隱密茶席悠閒時光 🌿🏮`,
-          `${core}懷舊木造町家與米其林私廚約會 🥢✨`
-        ],
-        metropolis: [
-          `${core}璀璨天際線夜景與頂樓酒吧微醺之約 🌃🍸`,
-          `${core}當代建築美學與特色風格選物散策 ✨☕`,
-          `${core}海港繁華夜色與浪漫景觀餐廳盛宴 🥂🏙️`,
-          `${core}現代都市漫步與街角藝文探索之旅 🏙️💫`,
-          `${core}摩登天際光影與雙人漫遊地圖 🌃✨`
-        ],
-        universal: [
-          `${core}雙人專屬慢步調與秘境風光巡禮 ✨`,
-          `${core}山海美景探訪與心動雙人微旅行 🌿`,
-          `${core}療癒私房景點與慢活甜點漫遊地圖 🍰💫`,
-          `${core}悠閒自在步調與溫暖回憶假期 🍃`,
-          `${core}甜蜜兩人世界與浪漫私房地圖 💫`
-        ]
-      };
-
-      const list = collections[theme] || collections.universal;
-      const picked = list[Math.floor(Math.random() * list.length)];
-      if (flagEmoji && flagEmoji !== '✈️' && !picked.includes(flagEmoji)) {
-        return `${picked} ${flagEmoji}`;
-      }
-      return picked;
-    },
-
-    generateCreativeTripDescription(place, theme) {
-      const openers = {
-        polar: [
-          `在無垠純白世界與晶瑩剔透的極地空氣中，與最愛的人手牽手並肩前行，感受萬年冰川與冷冽天地裡的純粹寧靜。`,
-          `遠離喧囂置身極淨壯麗的冰原天地，踏著柔軟白雪聆聽極光在夜空低語，沉浸在天地最純淨空靈的氛圍裡。`,
-          `穿梭在銀裝素裹的純白童話國度，呵出一口白霧握緊彼此微溫的手掌，將眼前的冰霜奇景化作永恆。`,
-          `搭乘靜音破冰遊船緩緩穿行於浮冰峽灣間，捧著冒著白煙的熱可可，屏息凝望兩岸冰封的壯麗峭壁。`,
-          `清晨在木屋窗畔被初升朝陽映照的粉金雪景喚醒，穿上防寒雪靴踩出兩人專屬的咯吱踏雪腳印。`
-        ],
-        beach: [
-          `迎著帶有鹹甜海潮氣息的溫暖微風與拍岸浪濤聲，赤足漫步在綿延細軟的沙灘上，捕捉夕陽漸層沉入蔚藍海面的魔幻時刻。`,
-          `在果凍般清澈透明的漸層湛藍海水中浮潛，看熱帶魚群在五彩珊瑚間輕快穿梭，享受最舒心愜意的海島時光。`,
-          `開著車沿著無敵海景公路隨性奔馳，吹著微熱海風看浪花拍打礁岩，在橘粉色晚霞映照下感受島嶼悠緩步調。`,
-          `午後在搖曳椰影下並肩躺在純白吊床上，聽著微風拂動棕櫚葉與陣陣海浪聲，享受毫無催促的慵懶放空。`,
-          `清晨迎著初醒海平線的微光騎著單車沿海漫遊，在鹹涼晨風中深呼吸，感受海島剛剛甦醒的清新純淨。`
-        ],
-        mountain: [
-          `走入被晨曦薄霧與高山芬多精環繞的幽靜山林，踩著松針小徑聆聽林梢風聲與遠處潺潺流水。`,
-          `開車穿梭在壯闊的山巒與蓊鬱森林公路，迎著撲面而來的清涼山風，感受遠離塵囂的開闊與寧靜。`,
-          `站在俯瞰整座山谷的懸崖觀景台，看遠方群山在雲海翻騰間若隱若現，感受大自然帶來的無限療癒。`,
-          `乘著復古高山鐵道穿過蒼翠針葉林與飛瀑深谷，在木造車廂窗前肩並肩凝視大自然的鬼斧神工。`,
-          `走上鋪滿落葉的森林木棧步道，陽光透過樹冠灑下斑駁金光，在鳥鳴清脆處停下腳步分享彼此微笑。`
-        ],
-        european: [
-          `牽手穿梭在典雅古典建築與石板小巷之間，在街角露天咖啡座聞著烘焙麵包與濃縮咖啡香氣悠閒消磨午後。`,
-          `漫步於歷史悠久的石造拱橋與古老廣場，在街頭藝人悠揚琴聲中駐足，細細品味老城獨有的浪漫底蘊。`,
-          `黃昏搭乘遊船掠過兩岸華麗的古堡與教堂尖頂，看金色餘暉灑落水面，把整座城市的優雅溫柔深印心底。`,
-          `穿梭於古老拱廊街區的二手黑膠店與文藝小書店，在撲鼻的紙頁香與復古氛圍中找尋彼此喜愛的小驚喜。`,
-          `晨光熹微中漫步於靜謐河畔舊書攤前，在教堂鐘聲伴隨下分享剛出爐的酥脆可頌與熱拿鐵。`
-        ],
-        eastAsian: [
-          `穿梭於古色古香的木造老宅與紅燈籠照耀的石板街弄，在撲鼻的在地小吃香氣與茶香中找尋隱密私房角落。`,
-          `漫步在綠意盎然的日式庭園與百年古蹟迴廊，在微風拂動樹影的婆娑聲中找回專屬兩人的安寧與從容。`,
-          `踩著悠閒腳步走進充滿文創活力的人文聚落，在特色小店與手作工坊裡發掘驚喜，細品歲月沉澱的美好。`,
-          `午後鑽進掛著亞麻暖簾的木造町家咖啡館，在焙茶與抹茶甜點的濃醇香氣中享受靜謐時光。`,
-          `迎著徐徐晚風騎單車沿著柳樹垂蔭的河堤漫遊，看水面波光粼粼與對岸民居漸次亮起的溫暖燈火。`
-        ],
-        metropolis: [
-          `並肩穿梭在充滿摩登活力的繁華街區，在當代建築美學與隱密設計選品店間探索城市的獨特魅力。`,
-          `在璀璨流動的城市夜色與霓虹光影下漫步，感受都會特有的節奏感，並在街角小酒館享受專屬兩人的私密時光。`,
-          `搭乘地鐵穿梭在摩登大樓與文青小區之間，用雙腳丈量這座城市的每一面精彩，留下滿滿心動足跡。`,
-          `雨後的城市街道倒映著繽紛霓虹，牽手走進充滿黑膠樂聲的地下隱密酒吧，感受都會微醺的迷人節奏。`,
-          `清晨漫步於摩天大樓腳下的林蔭大道與當代美術館，在挑高玻璃帷幕的天光下共度藝文早晨。`
-        ],
-        universal: [
-          `以專屬兩人的自在步調慢行於心動風景之間，發掘沿途隱藏的秘境角落與在地私房美味。`,
-          `牽著彼此的手探訪這座充滿故事的迷人地方，在每一個駐足凝望的瞬間相視微笑，享受毫無催促的純粹假期。`,
-          `放下日常繁瑣與喧囂，在宜人景色與舒適氛圍中慢慢散步，感受專屬彼此最真實的溫暖與陪伴。`,
-          `沿著蜿蜒的小路探訪不期而遇的絕美風景，在充滿驚喜的轉角記錄下兩人最自然真摯的開朗笑顏。`,
-          `清晨伴隨清新的微風展開屬於彼此的慢旅地圖，在不設限的探索中發現這座城鎮獨有的溫潤底蘊。`
-        ]
-      };
-
-      const closers = {
-        polar: [
-          `夜幕降臨時入住暖心景觀旅宿，在壁爐柴火微光中共享熱湯或熱紅酒，仰望窗外跳動的夢幻極光與璀璨星河。`,
-          `夜宿溫暖極地玻璃艙，在零下世界裡相擁入眠，將這份屬於兩個人的極致純粹刻印進生命記憶。`,
-          `在熱氣氤氳的露天溫泉中洗去寒意，抬頭凝視漫天飛雪與無邊夜空，在心底許下相伴一生的溫暖誓言。`,
-          `深夜圍坐在暖和的原木桌前手捧熱湯談心，窗外繁星如鑽石般在黑夜中閃爍，時間彷彿在此靜止。`,
-          `在暖暖的北歐羽絨被裡相擁醒來，推開窗門迎接無光害純白大地上的第一縷淡金色日光。`
-        ],
-        beach: [
-          `午後在海景無邊際泳池畔輕啜熱帶特調，夜晚伴著海潮低語沉醉於專屬兩人的浪漫放空時光。`,
-          `黃昏並肩坐在沙灘上看夕陽染紅整片天空，在微醺夜風中聽著海浪輕拍，把這一刻的溫柔永遠留存。`,
-          `入夜後造訪海邊露天小酒吧聽著現場爵士樂，在星光與燭光交織的氛圍中相視微笑、輕碰酒杯。`,
-          `赤足走過退潮時泛著月光的淺灘，抬頭看漫天璀璨南十字星，將海潮的溫柔低語深藏心底。`,
-          `在靠海的露台小餐館共享現烤海鮮晚餐，海風輕拂髮梢，在微醺歡笑中度過最愜意的島嶼之夜。`
-        ],
-        mountain: [
-          `清晨在木屋露台端著熱咖啡迎接翻騰雲海間的第一道金色曙光，在天地大美前相擁許下甜蜜諾言。`,
-          `夜幕降臨時圍坐在溫暖的營火旁烤棉花糖、仰望滿天星斗，在無光害的浩瀚銀河下分享彼此心聲。`,
-          `在隱蔽山間溫泉湯屋中舒緩身心，聽窗外蟲鳴鳥叫與林風輕拂，享受專屬兩人的靜謐天地。`,
-          `入夜後在原木山莊壁爐前蓋著毛毯輕聲交談，窗外松林在微涼夜風中輕吟，安謐得令人沉醉。`,
-          `傍晚在觀景平台看夕陽將遠方山巒染成紫金色晚霞，在天地遼闊間感受彼此手心傳來的踏實暖意。`
-        ],
-        european: [
-          `黃昏搭乘遊船仰望微光點綴的歷史古橋與金色夕陽，夜宿百年古典旅店，把整座城市的浪漫與溫柔收進雙人旅行記憶。`,
-          `夜晚在隱密燭光餐酒館品嚐地道佳餚與陳年紅酒，在悠揚小提琴聲中度過最難忘的微醺夜晚。`,
-          `清晨漫步在晨光灑落的古老石階上互拍照片，在飄散牛角可頌香氣的小店展開美好的一天。`,
-          `暮色降臨時坐在街角小酒館的紅色露天椅上，看路燈一盞盞亮起，把微醺的幸福感寫入雙人回憶。`,
-          `夜宿俯瞰古城紅瓦屋頂的復古閣樓，在微涼夜風與街角悠遠手風琴樂音中，溫柔相擁入眠。`
-        ],
-        eastAsian: [
-          `午後在靜謐庭院共享一壺溫熱好茶與精緻甜食，在從容悠緩的時光流轉裡享受最平凡也最深切的陪伴。`,
-          `夜晚漫步至燈火溫暖的特色夜市大快朵頤，在熱鬧人煙中牽緊雙手，收穫舌尖與心靈的雙重滿足。`,
-          `入住日式溫泉榻榻米旅宿享用豐盛會席料理，在榻榻米清香與溫暖泉水中徹底療癒身心。`,
-          `黃昏在老街街角的木作小茶館依窗而坐，看燈籠在漸暗暮色中映照水面，在茶香裊裊中分享心事。`,
-          `深夜踩著木屐在石板小徑散步回旅宿，晚風沁涼、星空澄澈，把這份歲月靜好的溫柔化作心靈養分。`
-        ],
-        metropolis: [
-          `入夜後登上高空景觀酒吧在爵士樂聲中輕碰酒杯，俯瞰腳下如銀河般鋪展的璀璨天際線，沉醉於微醺浪漫夜色。`,
-          `夜晚在米其林私廚餐館共享精緻盛宴，在落地窗外的萬家燈火映襯下，慶祝屬於兩人的美好時光。`,
-          `在街區特色甜點店享受招牌舒芙蕾與手沖咖啡，在繁華與優雅並存的都市角落留下最甜蜜的合照。`,
-          `深夜鑽進老巷裡的深夜食堂共享一碗熱騰騰拉麵，在溫暖的氤氳白煙與喧囂人聲中牽緊彼此雙手。`,
-          `漫步在燈火漸稀的河濱景觀步道，夜風輕拂微涼，在璀璨大橋倒影下輕聲許下未來更多的浪漫約定。`
-        ],
-        universal: [
-          `在沿途美景與在地道地美食中慢嚐生活滋味，把每一刻平凡又溫暖的笑容，化作彼此心中最珍貴的甜蜜回憶。`,
-          `迎著徐徐微風漫談未來憧憬，在專屬兩人的自在步調中，重新遇見生活最美好的心動模樣。`,
-          `在每一處風景前記錄兩人的甜蜜身影，把這些溫暖細碎的片刻，細心珍藏成往後歲月中最值得回味的篇章。`,
-          `黃昏在景觀餐廳的露天座並肩品味當地特色晚餐，在霞光漸暗的溫柔時刻裡舉杯慶祝相伴時光。`,
-          `在靜謐的夜宿空間裡洗去旅途疲憊，互相分享手機裡拍下的心動照片，在甜蜜滿足中相擁入眠。`
-        ]
-      };
-
-      const oList = openers[theme] || openers.universal;
-      const cList = closers[theme] || closers.universal;
-      const opener = oList[Math.floor(Math.random() * oList.length)];
-      const closer = cList[Math.floor(Math.random() * cList.length)];
-
-      return `${opener} ${closer}`;
-    },
-
-    generateThematicTags(cleanWord, theme, seasons, budget, distKm) {
-      const themeTags = {
-        polar: ['#極光玻璃屋', '#萬年藍冰', '#雪國童話', '#破冰巡航'],
-        beach: ['#玻璃海', '#海景Villa', '#落日微醺', '#珊瑚浮潛'],
-        mountain: ['#雲海日出', '#森林芬多精', '#高山鐵道', '#星空露營'],
-        european: ['#百年古堡', '#左岸咖啡', '#塞納河遊船', '#古都巡禮'],
-        eastAsian: ['#古都散策', '#老街尋幽', '#在地私房美饌', '#和風茶席'],
-        metropolis: ['#璀璨夜景', '#天際酒吧', '#米其林摘星', '#藝文散步'],
-        universal: ['#秘境探索', '#心動旅程', '#雙人漫步', '#浪漫時光']
-      };
-
-      const pool = themeTags[theme] || themeTags.universal;
-      const pickedTags = pool.slice(0, 2);
-      return [
-        `#${cleanWord}`,
-        ...pickedTags,
-        distKm < 400 ? '#島內放風' : '#異國巡禮',
-        budget === '$$$$' ? '#極致夢想' : budget === '$$$' ? '#度假時光' : '#說走就走',
-        '#雙人記憶'
-      ];
-    },
-
     getServerlessEndpoint() {
       const host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
       if (host.endsWith('web.app') || host.endsWith('firebaseapp.com')) {
@@ -4711,7 +4136,9 @@
 
       // 1. Try Direct Google Gemini API (if user configured a Gemini key)
       const directKey = this.getGeminiApiKey();
-      if (directKey) {
+      if (!directKey) {
+        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
+      } else {
         const varietyThemes = [
           'Sensory & Atmospheric (tangible weather, fragrances, sounds, morning or twilight light)',
           'Culinary & Hidden Spots (local delicacies, cozy cafes, intimate eateries, street food)',
@@ -4802,155 +4229,9 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
         // Serverless offline; proceed to Client Heuristics
       }
 
-      // 3. Curated Landmark Fast-Path (guarantees perfect coordinates & rich creative leeway)
-      const landmark = this.findKnownLandmark(query);
-      if (landmark) {
-        const name = landmark.nameTemplates[Math.floor(Math.random() * landmark.nameTemplates.length)];
-        const description = landmark.descriptionTemplates[Math.floor(Math.random() * landmark.descriptionTemplates.length)];
-        return {
-          name,
-          locationName: landmark.locationName,
-          lat: landmark.lat,
-          lng: landmark.lng,
-          minDays: landmark.minDays,
-          maxDays: landmark.maxDays,
-          budget: landmark.budget,
-          costEstimate: landmark.costEstimate,
-          seasons: normalizeSeasons(landmark.seasons),
-          tags: [...landmark.tags],
-          description,
-          _source: 'Local Curated Landmark Engine'
-        };
-      }
-
-      // 4. Client-side Nominatim Geocoding + Dynamic Creative Leeway Engine
-      const geo = await this.geocodeNominatim(query);
-      const taiwanCenter = { lat: 23.8, lng: 120.9 };
-      const distKm = this.calcDistanceKm(taiwanCenter.lat, taiwanCenter.lng, geo.lat, geo.lng);
-
-      // Determine Region / Country label
-      const parts = geo.displayName.split(',').map(s => s.trim());
-      const country = parts[parts.length - 1] || 'Global';
-      const city = parts[0] || query;
-      const locationName = parts.length > 2 ? `${city}, ${country}` : geo.displayName.substring(0, 45);
-
-      // Detect Theme
-      const theme = this.detectTheme(query, locationName);
-
-      // Duration & Budget Heuristics based on Distance & Theme
-      let minDays = 2, maxDays = 3, budget = '$', costEstimate = '~NT$4,000 - 8,000 /人';
-      let seasons = ['all'];
-
-      if (theme === 'polar') {
-        budget = '$$$$';
-        costEstimate = '~NT$120,000 - 250,000 /人';
-        minDays = 8;
-        maxDays = 14;
-        seasons = ['winter', 'summer'];
-      } else if (distKm < 400) {
-        // Domestic Taiwan
-        if (/溫泉|villa|渡假|奢華|包棟/i.test(query)) {
-          budget = '$$';
-          costEstimate = '~NT$8,500 - 15,000 /人';
-        } else {
-          budget = '$';
-          costEstimate = '~NT$3,500 - 7,500 /人';
-        }
-        minDays = 2;
-        maxDays = distKm > 200 ? 4 : 3;
-
-        // Tailored Taiwan domestic seasons
-        if (/溫泉|泡湯|湯屋|溫泉會館/i.test(query)) {
-          seasons = ['autumn', 'winter', 'spring'];
-        } else if (theme === 'beach' || /墾丁|澎湖|小琉球|綠島|蘭嶼|海|沙灘|浪/i.test(query)) {
-          seasons = ['spring', 'summer', 'autumn'];
-        } else if (theme === 'mountain' || /阿里山|清境|合歡山|太平山|日月潭|杉林溪/i.test(query)) {
-          seasons = ['spring', 'summer', 'autumn'];
-        } else {
-          seasons = ['all'];
-        }
-      } else if (distKm < 4200) {
-        // East Asia & Southeast Asia (Japan, Korea, Thailand, Vietnam, Bali)
-        if (/泰國|清邁|曼谷|越南|河內|東南亞/i.test(query) || /thailand|vietnam|bali/i.test(locationName)) {
-          budget = '$$';
-          costEstimate = '~NT$18,000 - 28,000 /人';
-          seasons = ['autumn', 'winter', 'spring']; // Pleasant dry season for SE Asia
-        } else {
-          budget = '$$$';
-          costEstimate = '~NT$32,000 - 52,000 /人';
-          seasons = ['spring', 'summer', 'autumn'];
-        }
-        minDays = 4;
-        maxDays = 7;
-      } else {
-        // Long-haul (Europe, Americas, Oceania, Iceland, Switzerland)
-        budget = '$$$$';
-        costEstimate = '~NT$75,000 - 130,000 /人';
-        minDays = 8;
-        maxDays = 14;
-        seasons = ['spring', 'summer', 'autumn'];
-      }
-
-      // Keyword Season Overrides (Lenient)
-      if (theme === 'polar' || /雪|snow|ski|滑雪|冰川/i.test(query)) {
-        seasons = ['winter', 'spring'];
-      } else if (/極光|aurora/i.test(query)) {
-        seasons = ['autumn', 'winter'];
-      } else if (/溫泉|泡湯|湯屋|onsen|hot spring/i.test(query)) {
-        seasons = ['autumn', 'winter', 'spring'];
-      } else if (/櫻花|花海|sakura/i.test(query)) {
-        seasons = ['spring'];
-      } else if (theme === 'beach' || /海|沙灘|浮潛|潛水|sup|跳島|花火|beach|island/i.test(query)) {
-        seasons = ['spring', 'summer', 'autumn'];
-      } else if (/楓|紅葉|水杉|落羽松/i.test(query)) {
-        seasons = ['autumn'];
-      }
-
-      // Flag Emoji Detection
-      const flags = {
-        '日本': '🇯🇵', 'japan': '🇯🇵',
-        '韓國': '🇰🇷', 'korea': '🇰🇷',
-        '泰國': '🇹🇭', 'thailand': '🇹🇭',
-        '法國': '🇫🇷', 'france': '🇫🇷',
-        '英國': '🇬🇧', 'england': '🇬🇧',
-        '冰島': '🇮🇸', 'iceland': '🇮🇸',
-        '瑞士': '🇨🇭', 'switzerland': '🇨🇭',
-        '加拿大': '🇨🇦', 'canada': '🇨🇦',
-        '澳洲': '🇦🇺', 'australia': '🇦🇺',
-        '紐西蘭': '🇳🇿', 'new zealand': '🇳🇿',
-        '美國': '🇺🇸', 'usa': '🇺🇸',
-        '義大利': '🇮🇹', 'italy': '🇮🇹',
-        '希臘': '🇬🇷', 'greece': '🇬🇷',
-        '台灣': '🇹🇼', 'taiwan': '🇹🇼'
-      };
-      let flagEmoji = '✈️';
-      for (const [k, v] of Object.entries(flags)) {
-        if (query.toLowerCase().includes(k) || locationName.toLowerCase().includes(k)) {
-          flagEmoji = v;
-          break;
-        }
-      }
-
-      // High-leeway Dynamic Title & Description
-      const cleanWord = query.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
-      const name = this.generateCreativeTripTitle(cleanWord, theme, flagEmoji);
-      const description = this.generateCreativeTripDescription(cleanWord, theme);
-      const tags = this.generateThematicTags(cleanWord, theme, seasons, budget, distKm);
-
-      return {
-        name,
-        locationName,
-        lat: geo.lat,
-        lng: geo.lng,
-        minDays,
-        maxDays,
-        budget,
-        costEstimate,
-        seasons: normalizeSeasons(seasons),
-        tags,
-        description,
-        _source: 'OpenStreetMap Nominatim & Local Engine'
-      };
+      // No fallback: throw error if AI is down or unavailable
+      const errMsg = this.lastGeminiError || 'Gemini AI service is currently unavailable. Please check your API key or network connection.';
+      throw new Error(errMsg);
     },
 
     async generateAlternateTripDescription(placeName, currentDesc = '') {
@@ -4958,7 +4239,9 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
       if (!query) throw new Error('Please enter a destination name first.');
 
       const directKey = this.getGeminiApiKey();
-      if (directKey) {
+      if (!directKey) {
+        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
+      } else {
         const varietyThemes = [
           'Sensory & Atmospheric (tangible weather, fragrances, sounds, morning or twilight light)',
           'Culinary & Hidden Spots (local delicacies, cozy cafes, intimate eateries, street food)',
@@ -4986,9 +4269,9 @@ BANNED CLICHÉS: NEVER use formulaic phrases like "漫步在充滿浪漫氛圍�
         }
       }
 
-      // Fallback: local heuristic engine with theme detection
-      const theme = this.detectPlaceTheme(query);
-      return this.generateCreativeTripDescription(query, theme);
+      // No fallback: throw error if AI is down or unavailable
+      const errMsg = this.lastGeminiError || 'Gemini AI failed to generate description. Please check your API key or network connection.';
+      throw new Error(errMsg);
     },
 
     async generateActivity(userInput) {
@@ -4997,7 +4280,9 @@ BANNED CLICHÉS: NEVER use formulaic phrases like "漫步在充滿浪漫氛圍�
 
       // 1. Try Direct Google Gemini API (if user configured a Gemini key)
       const directKey = this.getGeminiApiKey();
-      if (directKey) {
+      if (!directKey) {
+        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
+      } else {
         const coupleNames = getCoupleNames();
         const actPrompt = `You are an imaginative romantic date activity assistant for ${coupleNames} from Taiwan.
 Analyze the date idea "${query}" and return ONLY a valid JSON object matching this exact schema:
@@ -5034,45 +4319,11 @@ environment must be one of: "indoor", "outdoor", "any".`;
             return srvData.spec;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
-      // 3. Client-side Heuristic Spec Classifier
-      let occasion = 'short';
-      if (/夜|微醺|酒吧|浪漫|燭光|晚餐|看夜景|bar|movie|星空|電影/i.test(query)) {
-        occasion = 'dateNight';
-      } else if (/日遊|露營|爬山|遠足|遊樂園|滑雪|浮潛|淨灘|離島|day trip/i.test(query)) {
-        occasion = 'wholeDay';
-      }
-
-      let environment = 'indoor';
-      if (/戶外|山|海|公園|跑|騎|步道|草皮|露營|沙灘|溪|森林/i.test(query)) {
-        environment = 'outdoor';
-      } else if (/逛|老街|夜市|市集|集章|拜拜|漁港/i.test(query)) {
-        environment = 'any';
-      }
-
-      let budget = '$';
-      if (/餐酒館|SPA|滑雪|飯店|大餐|米其林|牛排|鐵板燒|珠寶|金工/i.test(query)) {
-        budget = '$$$';
-      } else if (/咖啡|下午茶|電影|展|手作|體驗|拉麵|火鍋|烤肉|溜冰|釣蝦|KTV/i.test(query)) {
-        budget = '$$';
-      }
-
-      // Add poetic flair to bare short phrases if needed
-      let polishedTitle = query;
-      if (query === '看夜景') polishedTitle = '景觀觀景台浪漫看夜景與熱飲 🌃';
-      else if (query === '泡溫泉') polishedTitle = '雙人景觀露天溫泉與暖心熱湯 ♨️';
-      else if (query === '做甜點' || query === '烘焙') polishedTitle = '手作烘焙工作坊：兩人專屬甜點時光 🍰';
-      else if (query === '溜冰') polishedTitle = '冰上牽手漫滑與熱可可約會 ⛸️☕';
-      else if (query === '露營') polishedTitle = '星空森林露營與營火烤棉花糖 🏕️🔥';
-
-      return {
-        title: polishedTitle,
-        occasion,
-        budget,
-        environment,
-        _source: 'Local Rule Engine'
-      };
+      // No fallback: throw error if AI is down or unavailable
+      const errMsg = this.lastGeminiError || 'Gemini AI service is currently unavailable. Please check your API key or network connection.';
+      throw new Error(errMsg);
     }
   };
 
@@ -5380,23 +4631,15 @@ environment must be one of: "indoor", "outdoor", "any".`;
         applyTripAiSpec(spec);
         sfx.sparkle();
         confetti.burst();
-        const sourceLabel = spec._source || 'AI Engine';
+        const sourceLabel = spec._source || 'Google Gemini';
         if (hint) {
-          if (aiEngine.lastGeminiError && !sourceLabel.includes('Gemini')) {
-            hint.innerHTML = `⚠️ <small>${escapeHTML(aiEngine.lastGeminiError)}</small><br>✨ Fallback generated via <strong>[${escapeHTML(sourceLabel)}]</strong> for "${escapeHTML(spec.name)}"!`;
-          } else {
-            hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Specs generated for "${escapeHTML(spec.name)}"! Click "Save Destination" below.`;
-          }
+          hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Specs generated for "${escapeHTML(spec.name)}"! Click "Save Destination" below.`;
         }
-        if (aiEngine.lastGeminiError && !sourceLabel.includes('Gemini')) {
-          showToast(`Gemini Notice: ${aiEngine.lastGeminiError}`, 'warning');
-        } else {
-          showToast(`AI analyzed <strong>${escapeHTML(spec.name)}</strong> via ${escapeHTML(sourceLabel)}! 📍`);
-        }
+        showToast(`AI analyzed <strong>${escapeHTML(spec.name)}</strong> via ${escapeHTML(sourceLabel)}! 📍`);
       } catch (err) {
         console.error('AI trip generation error:', err);
-        if (hint) hint.textContent = `⚠️ ${err.message || 'Could not find location. Try another query.'}`;
-        showToast(`AI Notice: ${err.message}`, 'error');
+        if (hint) hint.textContent = `⚠️ ${err.message || 'AI service error. Please try again.'}`;
+        showToast(`AI Error: ${err.message}`, 'error');
         sfx.errorNudge();
       } finally {
         if (btnText) btnText.style.display = 'inline';
@@ -5420,8 +4663,8 @@ environment must be one of: "indoor", "outdoor", "any".`;
     if (btnMoreDesc) {
       btnMoreDesc.addEventListener('click', async () => {
         const placeName = document.getElementById('formTripName')?.value.trim() ||
-                          document.getElementById('aiTripInput')?.value.trim() ||
-                          document.getElementById('formTripRegion')?.value.trim();
+          document.getElementById('aiTripInput')?.value.trim() ||
+          document.getElementById('formTripRegion')?.value.trim();
         if (!placeName) {
           showToast('Please enter a destination name or generate a trip first!', 'warning');
           sfx.errorNudge();
@@ -5483,23 +4726,15 @@ environment must be one of: "indoor", "outdoor", "any".`;
         const spec = await aiEngine.generateActivity(query);
         applyActivityAiSpec(spec);
         sfx.sparkle();
-        const sourceLabel = spec._source || 'AI Engine';
+        const sourceLabel = spec._source || 'Google Gemini';
         if (hint) {
-          if (aiEngine.lastGeminiError && !sourceLabel.includes('Gemini')) {
-            hint.innerHTML = `⚠️ <small>${escapeHTML(aiEngine.lastGeminiError)}</small><br>✨ Fallback categorized via <strong>[${escapeHTML(sourceLabel)}]</strong> for "${escapeHTML(spec.title)}"!`;
-          } else {
-            hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Categorized "${escapeHTML(spec.title)}"! Click "Save Date Idea" below.`;
-          }
+          hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Categorized "${escapeHTML(spec.title)}"! Click "Save Date Idea" below.`;
         }
-        if (aiEngine.lastGeminiError && !sourceLabel.includes('Gemini')) {
-          showToast(`Gemini Notice: ${aiEngine.lastGeminiError}`, 'warning');
-        } else {
-          showToast(`Categorized "<strong>${escapeHTML(spec.title)}</strong>" via ${escapeHTML(sourceLabel)}! ✨`);
-        }
+        showToast(`Categorized "<strong>${escapeHTML(spec.title)}</strong>" via ${escapeHTML(sourceLabel)}! ✨`);
       } catch (err) {
         console.error('AI activity generation error:', err);
-        if (hint) hint.textContent = `⚠️ ${err.message || 'Could not classify idea.'}`;
-        showToast(`AI Notice: ${err.message}`, 'error');
+        if (hint) hint.textContent = `⚠️ ${err.message || 'AI service error. Please try again.'}`;
+        showToast(`AI Error: ${err.message}`, 'error');
         sfx.errorNudge();
       } finally {
         if (btnText) btnText.style.display = 'inline';
@@ -5774,8 +5009,8 @@ environment must be one of: "indoor", "outdoor", "any".`;
 
           // Preferred model from select dropdown or cached preference
           const preferredModel = (document.getElementById('selectGeminiModel')?.value) ||
-                                 localStorage.getItem('app_gemini_active_model') ||
-                                 'gemini-3.8-flash';
+            localStorage.getItem('app_gemini_active_model') ||
+            'gemini-3.8-flash';
 
           // Build prioritized test queue: Preferred model first, then smart & fast candidates
           const candidatesToTry = [
@@ -5832,7 +5067,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
             updateModelUI(verifiedModel);
 
             const modelBadge = `<span style="background:rgba(126,231,135,0.15);color:#7ee787;padding:2px 8px;border-radius:12px;font-family:monospace;font-size:0.8rem;border:1px solid rgba(126,231,135,0.3);">${escapeHTML(verifiedModel)}</span>`;
-            
+
             if (geminiKeyStatus) {
               geminiKeyStatus.innerHTML = `✅ <strong>Connected & Active!</strong> Google Gemini responded (Status 200) using ${modelBadge}.<br><small style="color:var(--color-text-muted)">1 test request registered on your Google AI Studio quota. Auto-selected from ${availableModels.length} discovered models.</small>`;
             }
@@ -5961,13 +5196,13 @@ environment must be one of: "indoor", "outdoor", "any".`;
     const tripCountBadge = document.getElementById('tripCountBadge');
     if (tripCountBadge) {
       tripCountBadge.addEventListener('click', () => {
-        try { sfx.pop(); } catch (e) {}
+        try { sfx.pop(); } catch (e) { }
         openManageModal('tripsList', 'all');
       });
       tripCountBadge.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          try { sfx.pop(); } catch (e) {}
+          try { sfx.pop(); } catch (e) { }
           openManageModal('tripsList', 'all');
         }
       });
@@ -5977,14 +5212,14 @@ environment must be one of: "indoor", "outdoor", "any".`;
     if (legendWishlistBtn) {
       legendWishlistBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        try { sfx.pop(); } catch (e) {}
+        try { sfx.pop(); } catch (e) { }
         openManageModal('tripsList', 'wishlist');
       });
       legendWishlistBtn.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           e.stopPropagation();
-          try { sfx.pop(); } catch (e) {}
+          try { sfx.pop(); } catch (e) { }
           openManageModal('tripsList', 'wishlist');
         }
       });
@@ -5994,14 +5229,14 @@ environment must be one of: "indoor", "outdoor", "any".`;
     if (legendVisitedBtn) {
       legendVisitedBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        try { sfx.pop(); } catch (e) {}
+        try { sfx.pop(); } catch (e) { }
         openManageModal('tripsList', 'visited');
       });
       legendVisitedBtn.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           e.stopPropagation();
-          try { sfx.pop(); } catch (e) {}
+          try { sfx.pop(); } catch (e) { }
           openManageModal('tripsList', 'visited');
         }
       });
@@ -6137,7 +5372,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
               trips: state.trips,
               savedAt: new Date().toISOString()
             }));
-          } catch (e) {}
+          } catch (e) { }
 
           if (state.deletedTripIds) state.deletedTripIds.clear();
           if (state.deletedActivityIds) state.deletedActivityIds.clear();
@@ -6161,7 +5396,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
             trips: state.trips,
             savedAt: new Date().toISOString()
           }));
-        } catch (e) {}
+        } catch (e) { }
 
         if (state.deletedTripIds) state.deletedTripIds.clear();
         if (state.deletedActivityIds) state.deletedActivityIds.clear();
