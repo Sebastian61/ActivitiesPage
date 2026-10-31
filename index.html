@@ -101,7 +101,7 @@
           Unlock Space &rarr;
         </button>
       </form>
-      <div class="lock-footer-version">v2.5.1</div>
+      <div class="lock-footer-version">v2.5.2</div>
     </div>
   </div>
 
@@ -466,7 +466,7 @@
       <span class="footer-dot">•</span>
       <span class="footer-subtitle">Date &amp; Getaway Hub</span>
       <span class="footer-dot">•</span>
-      <span class="footer-version" id="appVersion">v2.5.1</span>
+      <span class="footer-version" id="appVersion">v2.5.2</span>
     </div>
   </footer>
 
@@ -827,7 +827,7 @@
             <input type="password" id="inputGeminiApiKey" class="form-input" placeholder="AIzaSy... (from Google AI Studio)" style="width: 100%; font-family: monospace; font-size: 0.85rem; padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border-color, rgba(255,255,255,0.15)); background: rgba(255,255,255,0.05); color: var(--text-primary);">
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <button class="btn btn-outline btn-sm" id="btnSaveGeminiKey" type="button">💾 Save AI Key</button>
-              <button class="btn btn-outline btn-sm" id="btnTestGeminiKey" type="button">⚡ Test Key &amp; Quota</button>
+              <button class="btn btn-outline btn-sm" id="btnTestGeminiKey" type="button">⚡ Test Key</button>
               <button class="btn btn-outline btn-sm" id="btnRefreshModels" type="button">🔄 Auto-Detect Models</button>
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="text-decoration: none; display: inline-flex; align-items: center;">🔗 Open Google AI Studio ↗</a>
             </div>
@@ -846,16 +846,16 @@
               <div style="display: flex; gap: 8px; align-items: center;">
                 <select id="selectGeminiModel" class="select-box" style="flex: 1; font-size: 0.84rem; padding: 7px 12px; border-radius: 8px; background: rgba(15,23,42,0.7); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.18); cursor: pointer;">
                   <optgroup label="⚡ Flash Lite (Ultra Fast / Lowest Latency)">
-                    <option value="gemini-3.5-flash-lite">⚡ Gemini 3.5 Flash Lite (rpd 0/500)</option>
+                    <option value="gemini-3.5-flash-lite">⚡ Gemini 3.5 Flash Lite</option>
                   </optgroup>
                   <optgroup label="🧠 Flash (High Accuracy &amp; Balanced)">
-                    <option value="gemini-3.8-flash" selected>🧠 Gemini 3.8 Flash (Accurate Geography &amp; Budget) (rpd 0/500)</option>
-                    <option value="gemini-3.7-flash">✨ Gemini 3.7 Flash (Balanced &amp; Multimodal) (rpd 0/500)</option>
-                    <option value="gemini-3.5-flash">💎 Gemini 3.5 Flash (Standard) (rpd 0/500)</option>
+                    <option value="gemini-3.8-flash" selected>🧠 Gemini 3.8 Flash (Accurate Geography &amp; Budget)</option>
+                    <option value="gemini-3.7-flash">✨ Gemini 3.7 Flash (Balanced &amp; Multimodal)</option>
+                    <option value="gemini-3.5-flash">💎 Gemini 3.5 Flash (Standard)</option>
                   </optgroup>
                   <optgroup label="🔬 Pro &amp; Other Models (Deep Reasoning / Special)">
-                    <option value="gemini-2.5-pro">🔬 Gemini 2.5 Pro (Deep Reasoning) (rpd 0/50)</option>
-                    <option value="gemma-4-26b-a4b-it">🌿 Gemma 4 26B (Open Weights MoE) (rpd 0/500)</option>
+                    <option value="gemini-2.5-pro">🔬 Gemini 2.5 Pro (Deep Reasoning)</option>
+                    <option value="gemma-4-26b-a4b-it">🌿 Gemma 4 26B (Open Weights MoE)</option>
                   </optgroup>
                 </select>
               </div>
@@ -865,79 +865,7 @@
               </div>
             </div>
 
-            <!-- AI Quota Limits & Live Usage Monitor Card -->
-            <div class="ai-usage-monitor-card" style="margin-top: 14px; padding: 14px 16px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(6, 182, 212, 0.28); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-size: 0.95rem;">📊</span>
-                  <span style="font-size: 0.82rem; font-weight: 700; color: #fff; letter-spacing: 0.02em;">AI Quota Limits &amp; Current Usage</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <button type="button" class="btn btn-outline btn-xs" id="btnCalibrateAiUsage" title="Quick calibrate with Google AI Studio count" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 6px; border-color: rgba(6,182,212,0.4); color: #38bdf8;">🎯 Calibrate</button>
-                  <button type="button" class="btn btn-outline btn-xs" id="btnResetAiUsage" title="Reset daily count to 0" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 6px;">↺ Reset</button>
-                  <a href="https://aistudio.google.com/app/plan_and_billing" target="_blank" rel="noopener noreferrer" style="font-size: 0.72rem; color: var(--neon-cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Open Google AI Studio Plan &amp; Quota Dashboard">
-                    <span>Google AI Studio</span> ↗
-                  </a>
-                </div>
-              </div>
-
-              <!-- Usage Progress Bar -->
-              <div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
-                  <span>Today's Requests: <strong id="aiUsageTodayReq" style="color: #fff;">0</strong> / <span id="aiUsageRpdLimit">500</span> RPD</span>
-                  <span>RPM Rate: <strong id="aiUsageRpmLive" style="color: #5eead4;">0</strong> / <span id="aiUsageRpmLimit">15</span> RPM</span>
-                </div>
-                <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
-                  <div id="aiUsageProgressBar" style="width: 1%; height: 100%; background: linear-gradient(90deg, #06b6d4, #a855f7); transition: width 0.4s ease;"></div>
-                </div>
-              </div>
-
-              <!-- Real-world Calibration & Tier Controls -->
-              <div id="aiCalibrationPanel" style="background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                  <label for="inputCalibrateReq" style="font-size: 0.73rem; color: #cbd5e1; font-weight: 500;">Calibrate Today's Usage:</label>
-                  <div style="display: inline-flex; align-items: center; gap: 4px;">
-                    <button type="button" id="btnDecAiReq" class="btn btn-outline btn-xs" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; min-width: 22px;" title="Minus 1 request">-1</button>
-                    <input type="number" id="inputCalibrateReq" min="0" max="20000" placeholder="e.g. 23" style="width: 62px; padding: 2px 4px; font-size: 0.76rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff; text-align: center;">
-                    <button type="button" id="btnIncAiReq" class="btn btn-outline btn-xs" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; min-width: 22px;" title="Plus 1 request">+1</button>
-                    <button type="button" class="btn btn-outline btn-xs" id="btnApplyCalibrateReq" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; border-color: rgba(6,182,212,0.5); color: #38bdf8;">Set</button>
-                  </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                  <label for="selectCustomRpdTier" style="font-size: 0.73rem; color: #cbd5e1; font-weight: 500;">Daily Quota Tier (RPD):</label>
-                  <select id="selectCustomRpdTier" style="padding: 3px 6px; font-size: 0.73rem; background: #0f172a; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #38bdf8;">
-                    <option value="500">500 RPD (Google AI Studio Free Tier)</option>
-                    <option value="1500">1,500 RPD (Standard / Lite Quota)</option>
-                    <option value="50">50 RPD (Pro Tier Limit)</option>
-                    <option value="custom">Custom Quota...</option>
-                  </select>
-                </div>
-                <div style="font-size: 0.69rem; color: #94a3b8; line-height: 1.4; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
-                  💡 <strong>Real-World Usage Sync:</strong> Google's API key endpoint does not return server-side balance headers. Set your initial count to match your <a href="https://aistudio.google.com/app/plan_and_billing" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline;">Google AI Studio</a> usage; all requests in this app automatically increment and sync across your devices.
-                </div>
-              </div>
-
-              <!-- 3-Column Limits & Stats Grid -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 2px;">
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
-                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Tokens Today</div>
-                  <div style="font-size: 0.88rem; font-weight: 700; color: #fff; margin-top: 2px;" id="aiUsageTokens">0</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
-                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Daily RPD Quota</div>
-                  <div style="font-size: 0.88rem; font-weight: 700; color: #38bdf8; margin-top: 2px;" id="aiLimitContext">(rpd 0/500)</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px 10px;">
-                  <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Max Output</div>
-                  <div style="font-size: 0.88rem; font-weight: 700; color: #c084fc; margin-top: 2px;" id="aiLimitOutput">65,536 tokens</div>
-                </div>
-              </div>
-
-              <div style="font-size: 0.7rem; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-                <span>Last Request: <strong id="aiUsageLastCall" style="color: var(--text-muted);">None yet today</strong></span>
-                <span style="opacity: 0.8;">Synced via Firestore ☁️</span>
-              </div>
-            </div>
+            
 
             <div id="geminiKeyStatus" style="font-size: 0.78rem; margin-top: 8px; color: var(--text-muted); min-height: 18px;"></div>
           </div>
@@ -1050,6 +978,6 @@
   
   <!-- Seed Data & Application Script -->
   <script src="defaultData.js"></script>
-  <script src="app.js?v=2.5.1"></script>
+  <script src="app.js?v=2.5.2"></script>
 </body>
 </html>

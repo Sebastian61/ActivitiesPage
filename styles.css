@@ -3247,13 +3247,7 @@ body.is-locked .lockscreen-overlay {
   animation: ai-pulse-highlight 1.5s ease-out;
 }
 
-/* AI Quota Limits & Live Usage Monitor Styles */
-.ai-usage-monitor-card {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(6, 182, 212, 0.28);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
+
 
 .btn-xs {
   padding: 2px 7px !important;

@@ -694,8 +694,6 @@
     EMERGENCY_BACKUP: 'app_emergency_backup_v4',
     GEMINI_KEY: 'app_gemini_api_key',
     GEMINI_MODEL: 'app_gemini_active_model',
-    USAGE_STATS: 'app_gemini_usage_stats',
-    RPD_LIMIT: 'app_gemini_custom_rpd_limit',
     DETECTED_MODELS: 'app_gemini_detected_models',
     MODELS_META: 'app_gemini_models_meta',
     THEME: 'app_theme'
@@ -711,9 +709,7 @@
       EMERGENCY_BACKUP: `${prefix}emergency_backup_v4`,
       GEMINI_KEY: `${prefix}gemini_api_key`,
       GEMINI_MODEL: `${prefix}gemini_active_model`,
-      USAGE_STATS: `${prefix}gemini_usage_stats`,
-      RPD_LIMIT: `${prefix}gemini_custom_rpd_limit`,
-      DETECTED_MODELS: `${prefix}gemini_detected_models`,
+          DETECTED_MODELS: `${prefix}gemini_detected_models`,
       MODELS_META: `${prefix}gemini_models_meta`,
       THEME: `${prefix}theme`
     };
@@ -1809,8 +1805,6 @@
         // Auto-sync Gemini API key & verified model across authenticated devices
         const geminiKeyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
         const geminiModelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-        const aiUsageProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.USAGE_STATS) ? STORAGE_KEYS.USAGE_STATS : 'app_gemini_usage_stats';
-        const rpdLimitProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.RPD_LIMIT) ? STORAGE_KEYS.RPD_LIMIT : 'app_gemini_custom_rpd_limit';
 
         if (typeof data.geminiApiKey === 'string' && data.geminiApiKey.trim()) {
           const cloudGeminiKey = data.geminiApiKey.trim();
@@ -1826,49 +1820,6 @@
           localStorage.setItem(geminiModelProp, cloudModel);
           updateModelUI(cloudModel);
         }
-        if (data.aiUsage && typeof data.aiUsage === 'object') {
-          const today = new Date().toISOString().slice(0, 10);
-          if (data.aiUsage.todayDate === today && typeof aiUsageTracker !== 'undefined') {
-            const local = aiUsageTracker.getStats();
-            const remoteReq = typeof data.aiUsage.todayRequests === 'number' ? data.aiUsage.todayRequests : 0;
-            const remoteTokens = typeof data.aiUsage.todayTokens === 'number' ? data.aiUsage.todayTokens : 0;
-            const remoteUpdatedAt = data.aiUsage.updatedAt || 0;
-            const localUpdatedAt = local.updatedAt || 0;
-
-            let finalReq = local.todayRequests;
-            let finalTokens = local.todayTokens;
-            let finalLastCall = local.lastCall;
-
-            if (remoteUpdatedAt > localUpdatedAt) {
-              finalReq = remoteReq;
-              finalTokens = remoteTokens;
-              finalLastCall = data.aiUsage.lastCall || local.lastCall;
-            } else {
-              finalReq = Math.max(local.todayRequests || 0, remoteReq);
-              finalTokens = Math.max(local.todayTokens || 0, remoteTokens);
-            }
-
-            const mergedStats = {
-              ...local,
-              todayRequests: finalReq,
-              todayTokens: finalTokens,
-              lastCall: finalLastCall,
-              updatedAt: Math.max(localUpdatedAt, remoteUpdatedAt)
-            };
-            localStorage.setItem(aiUsageProp, JSON.stringify(mergedStats));
-            if (typeof data.aiUsage.customRpdLimit === 'number' && data.aiUsage.customRpdLimit > 0) {
-              localStorage.setItem(rpdLimitProp, data.aiUsage.customRpdLimit);
-            }
-            aiUsageTracker.updateUI();
-          }
-        }
-        if (typeof data.aiRpdLimit === 'number' && data.aiRpdLimit > 0) {
-          localStorage.setItem(rpdLimitProp, data.aiRpdLimit);
-          if (typeof aiUsageTracker !== 'undefined') {
-            aiUsageTracker.updateUI();
-          }
-        }
-
         // Persist merged state to local storage immediately
         saveLocalData();
 
@@ -3181,37 +3132,8 @@
   }
 
   // ============================================
-  // Gemini Model Preference, Limits & Usage Monitor
+  // Gemini Model Preference
   // ============================================
-  function formatModelRpdBadge(modelId, todayRequests) {
-    let rpd = 500;
-    try {
-      if (typeof aiUsageTracker !== 'undefined' && aiUsageTracker.getModelLimits) {
-        const limits = aiUsageTracker.getModelLimits(modelId);
-        if (limits && limits.rpd) rpd = limits.rpd;
-      } else {
-        const savedLimit = parseInt(localStorage.getItem('app_gemini_custom_rpd_limit'), 10);
-        if (savedLimit > 0) {
-          rpd = savedLimit;
-        } else {
-          const lower = (modelId || '').toLowerCase();
-          if (lower.includes('pro')) rpd = 50;
-        }
-      }
-    } catch (e) { }
-
-    let req = 0;
-    try {
-      if (typeof todayRequests === 'number') {
-        req = todayRequests;
-      } else if (typeof aiUsageTracker !== 'undefined' && aiUsageTracker.getStats) {
-        req = aiUsageTracker.getStats().todayRequests || 0;
-      }
-    } catch (e) { }
-
-    return `(rpd ${req}/${rpd})`;
-  }
-
   function classifyModelTier(modelId) {
     const lower = (modelId || '').toLowerCase();
     if (lower.includes('lite') || lower.includes('flash-lite')) {
@@ -3235,295 +3157,20 @@
     return `🤖 ${modelName}`;
   }
 
-  function formatModelShortPill(modelName, todayRequests) {
-    let base = '🤖 Model';
-    if (modelName === 'gemini-3.8-flash') base = '🧠 3.8 Flash';
-    else if (modelName === 'gemini-3.5-flash-lite') base = '⚡ 3.5 Lite';
-    else if (modelName === 'gemini-3.7-flash') base = '✨ 3.7 Flash';
-    else if (modelName === 'gemini-3.5-flash') base = '💎 3.5 Flash';
-    else if (modelName === 'gemma-4-26b-a4b-it') base = '🌿 Gemma 26B';
-    else if (modelName === 'gemini-2.5-pro') base = '🔬 2.5 Pro';
-    else {
-      const clean = (modelName || '').replace(/^gemini-/, '');
-      base = `🤖 ${clean.length > 10 ? clean.substring(0, 9) + '…' : clean}`;
-    }
-    const rpdBadge = formatModelRpdBadge(modelName, todayRequests);
-    return `${base} ${rpdBadge}`;
+  function formatModelShortPill(modelName) {
+    if (modelName === 'gemini-3.8-flash') return '🧠 3.8 Flash';
+    if (modelName === 'gemini-3.5-flash-lite') return '⚡ 3.5 Lite';
+    if (modelName === 'gemini-3.7-flash') return '✨ 3.7 Flash';
+    if (modelName === 'gemini-3.5-flash') return '💎 3.5 Flash';
+    if (modelName === 'gemma-4-26b-a4b-it') return '🌿 Gemma 26B';
+    if (modelName === 'gemini-2.5-pro') return '🔬 2.5 Pro';
+    const clean = (modelName || '').replace(/^gemini-/, '');
+    return `🤖 ${clean.length > 10 ? clean.substring(0, 9) + '…' : clean}`;
   }
-
-  // Live AI Quota Limits & Daily Usage Tracker
-  const aiUsageTracker = {
-    getStats() {
-      const today = new Date().toISOString().slice(0, 10);
-      let stats = {
-        todayDate: today,
-        todayRequests: 0,
-        todayTokens: 0,
-        recentCalls: [],
-        lastCall: null,
-        totalRequests: 0,
-        updatedAt: Date.now()
-      };
-      try {
-        const statsKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.USAGE_STATS) ? STORAGE_KEYS.USAGE_STATS : 'app_gemini_usage_stats';
-        const saved = JSON.parse(localStorage.getItem(statsKey) || '{}');
-        if (saved && saved.todayDate === today) {
-          stats = {
-            ...stats,
-            ...saved,
-            recentCalls: Array.isArray(saved.recentCalls) ? saved.recentCalls : []
-          };
-        } else if (saved && saved.todayDate) {
-          stats.totalRequests = saved.totalRequests || 0;
-        }
-      } catch (e) {
-        console.warn('Error reading AI usage stats:', e);
-      }
-      const now = Date.now();
-      stats.recentCalls = (stats.recentCalls || []).filter(ts => now - ts < 60000);
-      return stats;
-    },
-
-    saveStats(stats) {
-      try {
-        stats.updatedAt = stats.updatedAt || Date.now();
-        const statsKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.USAGE_STATS) ? STORAGE_KEYS.USAGE_STATS : 'app_gemini_usage_stats';
-        localStorage.setItem(statsKey, JSON.stringify(stats));
-        const docRef = (cloudSync && typeof cloudSync.getRoomDoc === 'function') ? cloudSync.getRoomDoc() : null;
-        if (docRef) {
-          const rpdLimitKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.RPD_LIMIT) ? STORAGE_KEYS.RPD_LIMIT : 'app_gemini_custom_rpd_limit';
-          const customLimit = parseInt(localStorage.getItem(rpdLimitKey), 10) || 500;
-          docRef.set({
-            aiUsage: {
-              todayDate: stats.todayDate,
-              todayRequests: stats.todayRequests,
-              todayTokens: stats.todayTokens,
-              lastCall: stats.lastCall,
-              updatedAt: stats.updatedAt,
-              customRpdLimit: customLimit
-            }
-          }, { merge: true }).catch(() => { });
-        }
-      } catch (e) {
-        console.warn('Error saving AI usage stats:', e);
-      }
-    },
-
-    recordCall(modelName, usageMetadata) {
-      const stats = this.getStats();
-      stats.todayRequests = (stats.todayRequests || 0) + 1;
-      stats.totalRequests = (stats.totalRequests || 0) + 1;
-      stats.updatedAt = Date.now();
-
-      const tokens = (usageMetadata && typeof usageMetadata.totalTokenCount === 'number')
-        ? usageMetadata.totalTokenCount
-        : 0;
-      stats.todayTokens = (stats.todayTokens || 0) + tokens;
-
-      const now = Date.now();
-      stats.recentCalls = (stats.recentCalls || []).filter(ts => now - ts < 60000);
-      stats.recentCalls.push(now);
-
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const cleanModel = (modelName || 'gemini').replace(/^models\//, '');
-      stats.lastCall = `${timeStr} (${cleanModel})`;
-
-      this.saveStats(stats);
-      this.updateUI();
-    },
-
-    setTodayRequests(count) {
-      const num = Math.max(0, parseInt(count, 10) || 0);
-      const stats = this.getStats();
-      stats.todayRequests = num;
-      stats.updatedAt = Date.now();
-      stats.lastCall = `Calibrated to ${num} manually`;
-      this.saveStats(stats);
-      this.updateUI();
-      if (typeof sfx !== 'undefined' && sfx.click) sfx.click();
-      if (typeof showToast === 'function') showToast(`Calibrated AI usage to ${num} requests today. 🎯`);
-    },
-
-    adjustTodayRequests(delta) {
-      const stats = this.getStats();
-      const current = stats.todayRequests || 0;
-      const next = Math.max(0, current + delta);
-      this.setTodayRequests(next);
-    },
-
-    setRpdLimit(limit) {
-      const num = Math.max(1, parseInt(limit, 10) || 500);
-      const rpdLimitKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.RPD_LIMIT) ? STORAGE_KEYS.RPD_LIMIT : 'app_gemini_custom_rpd_limit';
-      localStorage.setItem(rpdLimitKey, num);
-      const docRef = (cloudSync && typeof cloudSync.getRoomDoc === 'function') ? cloudSync.getRoomDoc() : null;
-      if (docRef) {
-        docRef.set({
-          aiRpdLimit: num
-        }, { merge: true }).catch(() => { });
-      }
-      this.updateUI();
-      if (typeof sfx !== 'undefined' && sfx.tap) sfx.tap();
-      if (typeof showToast === 'function') showToast(`RPD quota tier set to ${num.toLocaleString()} requests/day.`);
-    },
-
-    resetStats() {
-      const today = new Date().toISOString().slice(0, 10);
-      const stats = {
-        todayDate: today,
-        todayRequests: 0,
-        todayTokens: 0,
-        recentCalls: [],
-        lastCall: 'Reset just now',
-        totalRequests: (this.getStats().totalRequests || 0),
-        updatedAt: Date.now()
-      };
-      this.saveStats(stats);
-      this.updateUI();
-      if (typeof sfx !== 'undefined' && sfx.trash) sfx.trash();
-      if (typeof showToast === 'function') showToast('AI usage counter reset for today.');
-    },
-
-    getModelLimits(modelName) {
-      const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-      const model = modelName || localStorage.getItem(modelProp) || 'gemini-3.8-flash';
-      let meta = {};
-      try {
-        const metaProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.MODELS_META) ? STORAGE_KEYS.MODELS_META : 'app_gemini_models_meta';
-        const allMeta = JSON.parse(localStorage.getItem(metaProp) || '{}');
-        if (allMeta && allMeta[model]) meta = allMeta[model];
-      } catch (e) { }
-
-      const lower = (model || '').toLowerCase();
-      const rpdLimitKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.RPD_LIMIT) ? STORAGE_KEYS.RPD_LIMIT : 'app_gemini_custom_rpd_limit';
-      const savedCustomLimit = parseInt(localStorage.getItem(rpdLimitKey), 10);
-      const defaultFlashRpd = (savedCustomLimit > 0) ? savedCustomLimit : 500;
-
-      let rpd = defaultFlashRpd;
-      let rpm = 15;
-      let inputTokens = meta.inputTokenLimit || 1048576;
-      let outputTokens = meta.outputTokenLimit || 65536;
-
-      if (lower.includes('pro')) {
-        rpm = 2;
-        rpd = (savedCustomLimit && savedCustomLimit <= 100) ? savedCustomLimit : 50;
-        if (!meta.inputTokenLimit) inputTokens = 1048576;
-        if (!meta.outputTokenLimit) outputTokens = 65536;
-      } else if (lower.includes('lite')) {
-        rpm = 30;
-        rpd = defaultFlashRpd;
-        if (!meta.inputTokenLimit) inputTokens = 1048576;
-        if (!meta.outputTokenLimit) outputTokens = 65536;
-      } else if (lower.includes('gemma')) {
-        rpm = 30;
-        rpd = defaultFlashRpd;
-        if (!meta.inputTokenLimit) inputTokens = 131072;
-        if (!meta.outputTokenLimit) outputTokens = 8192;
-      } else {
-        rpm = 15;
-        rpd = defaultFlashRpd;
-      }
-
-      return {
-        rpd,
-        rpm,
-        inputTokens,
-        outputTokens
-      };
-    },
-
-    updateUI() {
-      const stats = this.getStats();
-      const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-      const activeModel = localStorage.getItem(modelProp) || 'gemini-3.8-flash';
-      const limits = this.getModelLimits(activeModel);
-
-      const elTodayReq = document.getElementById('aiUsageTodayReq');
-      const elRpdLimit = document.getElementById('aiUsageRpdLimit');
-      const elRpmLive = document.getElementById('aiUsageRpmLive');
-      const elRpmLimit = document.getElementById('aiUsageRpmLimit');
-      const elProgressBar = document.getElementById('aiUsageProgressBar');
-      const elTokens = document.getElementById('aiUsageTokens');
-      const elLimitContext = document.getElementById('aiLimitContext');
-      const elLimitOutput = document.getElementById('aiLimitOutput');
-      const elLastCall = document.getElementById('aiUsageLastCall');
-
-      if (elTodayReq) elTodayReq.textContent = (stats.todayRequests || 0).toLocaleString();
-      if (elRpdLimit) elRpdLimit.textContent = limits.rpd.toLocaleString();
-
-      const liveRpm = (stats.recentCalls || []).length;
-      if (elRpmLive) elRpmLive.textContent = liveRpm;
-      if (elRpmLimit) elRpmLimit.textContent = limits.rpm;
-
-      if (elTokens) elTokens.textContent = (stats.todayTokens || 0) > 0 ? (stats.todayTokens).toLocaleString() : '0';
-
-      if (elLimitContext) {
-        elLimitContext.textContent = formatModelRpdBadge(activeModel, stats.todayRequests);
-      }
-
-      if (elLimitOutput) {
-        elLimitOutput.textContent = `${limits.outputTokens.toLocaleString()} tokens`;
-      }
-
-      if (elLastCall) {
-        elLastCall.textContent = stats.lastCall || 'None yet today';
-      }
-
-      if (elProgressBar) {
-        const pct = limits.rpd > 0 ? Math.min(100, Math.max(1, ((stats.todayRequests || 0) / limits.rpd) * 100)) : 0;
-        elProgressBar.style.width = `${pct}%`;
-        if (pct > 80) {
-          elProgressBar.style.background = 'linear-gradient(90deg, #f59e0b, #ef4444)';
-        } else {
-          elProgressBar.style.background = 'linear-gradient(90deg, #06b6d4, #a855f7)';
-        }
-      }
-
-      // Update calibration input and tier select if present
-      const inputCalibrate = document.getElementById('inputCalibrateReq');
-      if (inputCalibrate && document.activeElement !== inputCalibrate) {
-        inputCalibrate.value = stats.todayRequests || 0;
-      }
-
-      const selectTier = document.getElementById('selectCustomRpdTier');
-      if (selectTier) {
-        const customLimit = parseInt(localStorage.getItem('app_gemini_custom_rpd_limit'), 10) || 500;
-        if (['500', '1500', '50'].includes(String(customLimit))) {
-          selectTier.value = String(customLimit);
-        } else {
-          selectTier.value = 'custom';
-        }
-      }
-
-      // Update all option labels in selectGeminiModel with live RPD counts
-      const selectEl = document.getElementById('selectGeminiModel');
-      if (selectEl) {
-        Array.from(selectEl.options).forEach(opt => {
-          const m = opt.value;
-          opt.textContent = `${formatModelDisplayName(m)} ${formatModelRpdBadge(m, stats.todayRequests)}`;
-        });
-      }
-
-      // Update quick model pills on Trip & Activity modals
-      const tripPill = document.getElementById('labelTripActiveModel');
-      const actPill = document.getElementById('labelActActiveModel');
-      const pillText = formatModelShortPill(activeModel, stats.todayRequests);
-      if (tripPill) tripPill.textContent = pillText;
-      if (actPill) actPill.textContent = pillText;
-    }
-  };
-
-  // Periodic ticker to refresh live RPM while cloudSyncModal is open
-  setInterval(() => {
-    const modal = document.getElementById('cloudSyncModal');
-    if (modal && modal.style.display !== 'none' && typeof aiUsageTracker !== 'undefined') {
-      aiUsageTracker.updateUI();
-    }
-  }, 10000);
 
   function updateModelUI(activeModel) {
     const model = activeModel || localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
-    const stats = (typeof aiUsageTracker !== 'undefined' && aiUsageTracker.getStats) ? aiUsageTracker.getStats() : { todayRequests: 0 };
-    const shortText = formatModelShortPill(model, stats.todayRequests);
+    const shortText = formatModelShortPill(model);
     const tripPill = document.getElementById('labelTripActiveModel');
     const actPill = document.getElementById('labelActActiveModel');
     if (tripPill) tripPill.textContent = shortText;
@@ -3538,8 +3185,7 @@
         if (!targetGroup) targetGroup = selectEl.querySelector('optgroup') || selectEl;
         const opt = document.createElement('option');
         opt.value = model;
-        const rpdBadge = formatModelRpdBadge(model, stats.todayRequests);
-        opt.textContent = `${formatModelDisplayName(model)} ${rpdBadge}`;
+        opt.textContent = formatModelDisplayName(model);
         targetGroup.prepend(opt);
       }
       selectEl.value = model;
@@ -3556,9 +3202,6 @@
       }
     }
 
-    if (typeof aiUsageTracker !== 'undefined') {
-      aiUsageTracker.updateUI();
-    }
   }
 
   function populateModelSelect(modelsList, modelsMetaArg) {
@@ -3577,8 +3220,6 @@
     const currentActive = localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
     const baseModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemma-4-26b-a4b-it'];
     const merged = [...new Set([...(modelsList || []), ...baseModels, currentActive])];
-
-    const stats = (typeof aiUsageTracker !== 'undefined' && aiUsageTracker.getStats) ? aiUsageTracker.getStats() : { todayRequests: 0 };
 
     const groups = {
       lite: [],
@@ -3608,8 +3249,7 @@
         list.forEach(m => {
           const opt = document.createElement('option');
           opt.value = m;
-          const rpdBadge = formatModelRpdBadge(m, stats.todayRequests);
-          opt.textContent = `${formatModelDisplayName(m)} ${rpdBadge}`;
+          opt.textContent = formatModelDisplayName(m);
           if (m === currentActive) opt.selected = true;
           optgroup.appendChild(opt);
         });
@@ -3713,15 +3353,11 @@
         autoDetectGeminiModels(savedKey, false);
       }
 
-      if (typeof aiUsageTracker !== 'undefined') {
-        aiUsageTracker.updateUI();
-      }
-
       if (statusEl) {
         if (savedKey) {
           statusEl.innerHTML = `✨ <strong>Gemini API Key active.</strong> Live queries use <code>${escapeHTML(activeModel)}</code>. Tweak your model anytime above.`;
         } else {
-          statusEl.textContent = 'No key entered. Currently using the free built-in local geocoding engine (0 API calls).';
+          statusEl.textContent = 'No key entered. Please configure your Gemini API Key in Settings to enable AI autofill.';
         }
       }
     }
@@ -4096,9 +3732,6 @@
             parsed._source = `Google Gemini (${model})`;
             this.lastGeminiError = null;
             localStorage.setItem(modelProp, model);
-            if (typeof aiUsageTracker !== 'undefined') {
-              aiUsageTracker.recordCall(model, data.usageMetadata);
-            }
             return parsed;
           }
         } catch (err) {
@@ -4219,9 +3852,6 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
           if (srvData && srvData.success && srvData.spec) {
             if (srvData.spec.seasons) srvData.spec.seasons = normalizeSeasons(srvData.spec.seasons);
             srvData.spec._source = 'Firebase Cloud Function (Gemini)';
-            if (typeof aiUsageTracker !== 'undefined') {
-              aiUsageTracker.recordCall('serverless-gemini');
-            }
             return srvData.spec;
           }
         }
@@ -4313,9 +3943,6 @@ environment must be one of: "indoor", "outdoor", "any".`;
           const srvData = await srvResp.json();
           if (srvData && srvData.success && srvData.spec) {
             srvData.spec._source = 'Firebase Cloud Function (Gemini)';
-            if (typeof aiUsageTracker !== 'undefined') {
-              aiUsageTracker.recordCall('serverless-gemini');
-            }
             return srvData.spec;
           }
         }
@@ -4836,9 +4463,6 @@ environment must be one of: "indoor", "outdoor", "any".`;
         const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
         localStorage.setItem(modelProp, chosen);
         updateModelUI(chosen);
-        if (typeof aiUsageTracker !== 'undefined') {
-          aiUsageTracker.updateUI();
-        }
         showToast(`AI Model set to ${formatModelShortPill(chosen)} & synced! ☁️`);
         sfx.tap();
         const docRef = (cloudSync && typeof cloudSync.getRoomDoc === 'function') ? cloudSync.getRoomDoc() : null;
@@ -4846,86 +4470,6 @@ environment must be one of: "indoor", "outdoor", "any".`;
           docRef.set({
             geminiModel: chosen
           }, { merge: true }).catch(e => console.warn('Cloud sync of model notice:', e));
-        }
-      });
-    }
-
-    const btnResetAiUsage = document.getElementById('btnResetAiUsage');
-    if (btnResetAiUsage) {
-      btnResetAiUsage.addEventListener('click', () => {
-        if (typeof aiUsageTracker !== 'undefined') {
-          aiUsageTracker.resetStats();
-        }
-      });
-    }
-
-    const btnCalibrateAiUsage = document.getElementById('btnCalibrateAiUsage');
-    if (btnCalibrateAiUsage) {
-      btnCalibrateAiUsage.addEventListener('click', () => {
-        const inputField = document.getElementById('inputCalibrateReq');
-        if (inputField) {
-          inputField.focus();
-          inputField.select();
-        } else if (typeof aiUsageTracker !== 'undefined') {
-          const current = aiUsageTracker.getStats().todayRequests || 0;
-          const input = prompt("Enter today's real-world used requests count (e.g. from Google AI Studio):", current);
-          if (input !== null && !isNaN(parseInt(input, 10))) {
-            aiUsageTracker.setTodayRequests(parseInt(input, 10));
-          }
-        }
-      });
-    }
-
-    const btnApplyCalibrateReq = document.getElementById('btnApplyCalibrateReq');
-    const inputCalibrateReq = document.getElementById('inputCalibrateReq');
-    if (btnApplyCalibrateReq && inputCalibrateReq) {
-      btnApplyCalibrateReq.addEventListener('click', () => {
-        if (typeof aiUsageTracker !== 'undefined') {
-          aiUsageTracker.setTodayRequests(inputCalibrateReq.value);
-        }
-      });
-      inputCalibrateReq.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          if (typeof aiUsageTracker !== 'undefined') {
-            aiUsageTracker.setTodayRequests(inputCalibrateReq.value);
-          }
-        }
-      });
-    }
-
-    const btnIncAiReq = document.getElementById('btnIncAiReq');
-    if (btnIncAiReq) {
-      btnIncAiReq.addEventListener('click', () => {
-        if (typeof aiUsageTracker !== 'undefined') {
-          aiUsageTracker.adjustTodayRequests(1);
-        }
-      });
-    }
-
-    const btnDecAiReq = document.getElementById('btnDecAiReq');
-    if (btnDecAiReq) {
-      btnDecAiReq.addEventListener('click', () => {
-        if (typeof aiUsageTracker !== 'undefined') {
-          aiUsageTracker.adjustTodayRequests(-1);
-        }
-      });
-    }
-
-    const selectCustomRpdTier = document.getElementById('selectCustomRpdTier');
-    if (selectCustomRpdTier) {
-      selectCustomRpdTier.addEventListener('change', () => {
-        const val = selectCustomRpdTier.value;
-        if (val === 'custom') {
-          const currentLimit = parseInt(localStorage.getItem('app_gemini_custom_rpd_limit'), 10) || 500;
-          const input = prompt('Enter your custom daily requests per day (RPD) quota limit:', currentLimit);
-          if (input !== null && !isNaN(parseInt(input, 10))) {
-            aiUsageTracker.setRpdLimit(parseInt(input, 10));
-          } else {
-            aiUsageTracker.updateUI();
-          }
-        } else {
-          aiUsageTracker.setRpdLimit(parseInt(val, 10));
         }
       });
     }
@@ -5045,9 +4589,6 @@ environment must be one of: "indoor", "outdoor", "any".`;
 
               if (testResp.ok) {
                 verifiedModel = targetModel;
-                if (typeof aiUsageTracker !== 'undefined') {
-                  aiUsageTracker.recordCall(targetModel, testData.usageMetadata);
-                }
                 break;
               } else {
                 lastStatus = testResp.status;
@@ -5069,7 +4610,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
             const modelBadge = `<span style="background:rgba(126,231,135,0.15);color:#7ee787;padding:2px 8px;border-radius:12px;font-family:monospace;font-size:0.8rem;border:1px solid rgba(126,231,135,0.3);">${escapeHTML(verifiedModel)}</span>`;
 
             if (geminiKeyStatus) {
-              geminiKeyStatus.innerHTML = `✅ <strong>Connected & Active!</strong> Google Gemini responded (Status 200) using ${modelBadge}.<br><small style="color:var(--color-text-muted)">1 test request registered on your Google AI Studio quota. Auto-selected from ${availableModels.length} discovered models.</small>`;
+              geminiKeyStatus.innerHTML = `✅ <strong>Connected & Active!</strong> Google Gemini responded (Status 200) using ${modelBadge}.<br><small style="color:var(--color-text-muted)">Model verified successfully. Auto-selected from ${availableModels.length} discovered models.</small>`;
             }
             sfx.chime();
             confetti.burst();
