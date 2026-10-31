@@ -385,12 +385,13 @@ environment must be one of: "indoor", "outdoor", "any".`;
       });
 
       const candidateModels = [
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-lite',
-        'gemini-1.5-flash',
-        'gemini-2.5-pro',
-        'gemini-1.5-pro'
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+        'gemini-flash-lite-latest',
+        'gemini-flash-latest',
+        'gemini-3.7-flash',
+        'gemini-pro-latest'
       ];
       for (const model of candidateModels) {
         try {

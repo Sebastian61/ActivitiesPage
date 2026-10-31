@@ -1735,6 +1735,11 @@
           firebase.initializeApp(config);
         }
         this.db = firebase.firestore();
+        try {
+          this.db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+        } catch (settingsErr) {
+          // Settings already applied or frozen, safe to ignore
+        }
         return true;
       } catch (err) {
         console.error('Firebase init error:', err);
@@ -1884,7 +1889,23 @@
       if (!docRef) return;
       let isInitialSnapshot = true;
 
-      // Real-time listener for live updates from partner
+      // 1. Direct one-shot fetch for immediate connection status & instant hydration (<300ms)
+      docRef.get().then((doc) => {
+        if (!doc) return;
+        this.connected = true;
+        const coupleNames = getCoupleNames();
+        this.updateStatusUI('connected', 'Auto-Sync Active', `Connected. All items are synchronized between ${coupleNames}.`);
+        if (doc.exists) {
+          this.applyRemoteData(doc.data(), true);
+        }
+      }).catch((fetchErr) => {
+        console.warn('Initial direct doc fetch notice:', fetchErr);
+        if (!this.connected) {
+          this.updateStatusUI('error', 'Cloud Notice', fetchErr.message || 'Cloud connection paused.');
+        }
+      });
+
+      // 2. Real-time listener for live updates from partner
       this.unsubscribe = docRef.onSnapshot((doc) => {
         this.connected = true;
         const coupleNames = getCoupleNames();
@@ -2050,6 +2071,9 @@
         payload.geminiModel = currentGeminiModel.trim();
       }
       docRef.set(payload, { merge: true }).then(() => {
+        this.connected = true;
+        const coupleNames = getCoupleNames();
+        this.updateStatusUI('connected', 'Auto-Sync Active', `Connected. All items are synchronized between ${coupleNames}.`);
         if (dot) dot.className = 'cloud-dot connected';
         showToast('☁️ Successfully pushed local collection to cloud!');
       }).catch(err => {
@@ -2068,6 +2092,9 @@
           showToast('No cloud data found yet.');
           return;
         }
+        this.connected = true;
+        const coupleNames = getCoupleNames();
+        this.updateStatusUI('connected', 'Auto-Sync Active', `Connected. All items are synchronized between ${coupleNames}.`);
         this.applyRemoteData(doc.data(), false);
         saveData(true);
         showToast('🔄 Pulled & merged latest data from cloud!');
@@ -3173,36 +3200,33 @@
   }
 
   function formatModelDisplayName(modelName) {
-    if (modelName === 'gemini-2.5-flash') return '🧠 Gemini 2.5 Flash (Accurate Geography & Budget)';
-    if (modelName === 'gemini-2.0-flash') return '✨ Gemini 2.0 Flash (Fast & Balanced)';
-    if (modelName === 'gemini-2.0-flash-lite') return '⚡ Gemini 2.0 Flash Lite (Ultra Fast)';
-    if (modelName === 'gemini-1.5-flash') return '💎 Gemini 1.5 Flash (Standard)';
-    if (modelName === 'gemini-2.5-pro') return '🔬 Gemini 2.5 Pro (Deep Reasoning)';
-    if (modelName === 'gemini-1.5-pro') return '🔬 Gemini 1.5 Pro';
+    if (modelName === 'gemini-3.5-flash-lite') return '⚡ Gemini 3.5 Flash Lite (Active & Ultra-Fast)';
+    if (modelName === 'gemini-3.8-flash') return '🧠 Gemini 3.8 Flash (Accurate Geography & Budget)';
+    if (modelName === 'gemini-3.5-flash') return '✨ Gemini 3.5 Flash';
+    if (modelName === 'gemini-flash-lite-latest') return '⚡ Gemini Flash Lite Latest';
+    if (modelName === 'gemini-flash-latest') return '💎 Gemini Flash Latest';
+    if (modelName === 'gemini-pro-latest') return '🔬 Gemini Pro Latest';
     if (modelName === 'gemini-3.7-flash') return '✨ Gemini 3.7 Flash';
-    if (modelName === 'gemini-3.5-flash-lite') return '⚡ Gemini 3.5 Flash Lite';
     if (modelName.includes('lite')) return `⚡ ${modelName} (Fast Lite)`;
     if (modelName.includes('pro')) return `🔬 ${modelName} (Pro Reasoning)`;
     return `🤖 ${modelName}`;
   }
 
   function formatModelShortPill(modelName) {
-    if (modelName === 'gemini-2.5-flash') return '🧠 2.5 Flash';
-    if (modelName === 'gemini-2.0-flash') return '✨ 2.0 Flash';
-    if (modelName === 'gemini-2.0-flash-lite') return '⚡ 2.0 Lite';
-    if (modelName === 'gemini-1.5-flash') return '💎 1.5 Flash';
-    if (modelName === 'gemini-2.5-pro') return '🔬 2.5 Pro';
-    if (modelName === 'gemini-1.5-pro') return '🔬 1.5 Pro';
-    if (modelName === 'gemini-3.7-flash') return '✨ 3.7 Flash';
     if (modelName === 'gemini-3.5-flash-lite') return '⚡ 3.5 Lite';
+    if (modelName === 'gemini-3.8-flash') return '🧠 3.8 Flash';
+    if (modelName === 'gemini-3.5-flash') return '✨ 3.5 Flash';
+    if (modelName === 'gemini-flash-lite-latest') return '⚡ Flash Lite';
+    if (modelName === 'gemini-flash-latest') return '💎 Flash Latest';
+    if (modelName === 'gemini-pro-latest') return '🔬 Pro Latest';
+    if (modelName === 'gemini-3.7-flash') return '✨ 3.7 Flash';
     const clean = (modelName || '').replace(/^gemini-/, '');
     return `🤖 ${clean.length > 10 ? clean.substring(0, 9) + '…' : clean}`;
   }
 
   function updateModelUI(activeModel) {
     const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-    let model = activeModel || localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
-    if (model.startsWith('gemini-3.8')) model = 'gemini-2.5-flash';
+    let model = activeModel || localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-3.5-flash-lite';
     const shortText = formatModelShortPill(model);
     const tripPill = document.getElementById('labelTripActiveModel');
     const actPill = document.getElementById('labelActActiveModel');
@@ -3226,7 +3250,7 @@
 
     const descEl = document.getElementById('modelDetailText');
     if (descEl) {
-      if (model.includes('2.5-flash') || model.includes('2.0-flash')) {
+      if (model.includes('3.8-flash') || model.includes('2.5-flash') || model.includes('2.0-flash')) {
         descEl.innerHTML = '🧠 <strong>Accurate Geography & Budget:</strong> Calibrated for Taiwan flight times and realistic NT$ costs.';
       } else if (model.includes('lite')) {
         descEl.innerHTML = '⚡ <strong>Ultra Fast / Lowest Latency:</strong> Generates within milliseconds.';
@@ -3250,9 +3274,8 @@
     }
 
     const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-    let currentActive = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
-    if (currentActive.startsWith('gemini-3.8')) currentActive = 'gemini-2.5-flash';
-    const baseModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
+    let currentActive = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-3.5-flash-lite';
+    const baseModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-pro-latest'];
     const merged = [...new Set([...(modelsList || []), ...baseModels, currentActive])];
 
     const groups = {
@@ -3373,22 +3396,36 @@
       
       let savedKey = (localStorage.getItem(keyProp) || localStorage.getItem('app_gemini_api_key') || localStorage.getItem('va_gemini_api_key') || '').trim();
 
-      // If savedKey is empty, fetch proactively from Firebase room document
-      if (!savedKey && typeof cloudSync !== 'undefined' && typeof cloudSync.getRoomDoc === 'function') {
+      // Proactively pull freshest key, model & connection status from cloud
+      if (typeof cloudSync !== 'undefined' && typeof cloudSync.getRoomDoc === 'function') {
         try {
           const docRef = cloudSync.getRoomDoc();
           if (docRef && docRef.get) {
-            const snap = await docRef.get();
-            if (snap && snap.exists) {
-              const rData = snap.data();
-              if (rData && rData.geminiApiKey) {
-                savedKey = rData.geminiApiKey.trim();
-                localStorage.setItem(keyProp, savedKey);
+            docRef.get().then((snap) => {
+              if (snap && snap.exists) {
+                const rData = snap.data();
+                if (rData && rData.geminiApiKey) {
+                  const cloudKey = rData.geminiApiKey.trim();
+                  localStorage.setItem(keyProp, cloudKey);
+                  savedKey = cloudKey;
+                  if (input && (!input.value || input.value !== cloudKey)) {
+                    input.value = cloudKey;
+                  }
+                  if (statusEl) {
+                    const currentModel = localStorage.getItem(modelProp) || 'gemini-3.5-flash-lite';
+                    statusEl.innerHTML = `✨ <strong>Gemini API Key active.</strong> Live queries use <code>${escapeHTML(currentModel)}</code>. Tweak your model anytime above.`;
+                  }
+                }
+                if (rData && rData.geminiModel) {
+                  const cloudModel = rData.geminiModel.trim();
+                  localStorage.setItem(modelProp, cloudModel);
+                  updateModelUI(cloudModel);
+                }
+                cloudSync.connected = true;
+                const coupleNames = getCoupleNames();
+                cloudSync.updateStatusUI('connected', 'Auto-Sync Active', `Connected. All items are synchronized between ${coupleNames}.`);
               }
-              if (rData && rData.geminiModel) {
-                localStorage.setItem(modelProp, rData.geminiModel.trim());
-              }
-            }
+            }).catch(e => console.warn('Modal cloud pull notice:', e));
           }
         } catch (e) {
           console.warn('Firebase modal key fetch notice:', e);
@@ -3410,8 +3447,7 @@
       } catch (e) { }
       populateModelSelect(detectedModels, modelsMeta);
 
-      let activeModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
-      if (activeModel.startsWith('gemini-3.8')) activeModel = 'gemini-2.5-flash';
+      let activeModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-3.5-flash-lite';
       updateModelUI(activeModel);
 
       // Auto-detect models in background if key is present
@@ -3804,17 +3840,17 @@
 
       // Check for user-selected model preference or verified model
       const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-      let cachedModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
-      if (cachedModel.startsWith('gemini-3.8')) cachedModel = 'gemini-2.5-flash';
+      let cachedModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-3.5-flash-lite';
 
       const candidateModels = customModels || [
         cachedModel,
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-lite',
-        'gemini-1.5-flash',
-        'gemini-2.5-pro',
-        'gemini-1.5-pro'
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+        'gemini-flash-lite-latest',
+        'gemini-flash-latest',
+        'gemini-3.7-flash',
+        'gemini-pro-latest'
       ].filter(Boolean);
 
       const uniqueModels = [...new Set(candidateModels.map(m => m.replace(/^models\//, '')))];
@@ -4679,18 +4715,18 @@ environment must be one of: "indoor", "outdoor", "any".`;
           let preferredModel = (document.getElementById('selectGeminiModel')?.value) ||
             localStorage.getItem(modelProp) ||
             localStorage.getItem('app_gemini_active_model') ||
-            'gemini-2.5-flash';
-          if (preferredModel.startsWith('gemini-3.8')) preferredModel = 'gemini-2.5-flash';
+            'gemini-3.5-flash-lite';
 
-          // Build prioritized test queue: Preferred model first, then real Google models, then any discovered
+          // Build prioritized test queue: Preferred model first, then active 2026 models, then any discovered
           const candidatesToTry = [
             preferredModel,
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-2.0-flash-lite',
-            'gemini-1.5-flash',
-            'gemini-2.5-pro',
-            'gemini-1.5-pro',
+            'gemini-3.5-flash-lite',
+            'gemini-3.8-flash',
+            'gemini-3.5-flash',
+            'gemini-flash-lite-latest',
+            'gemini-flash-latest',
+            'gemini-3.7-flash',
+            'gemini-pro-latest',
             ...availableModels.filter(m => !m.includes('tts') && !m.includes('image'))
           ];
           const testQueue = [...new Set(candidatesToTry.map(m => m.replace(/^models\//, '')))];
