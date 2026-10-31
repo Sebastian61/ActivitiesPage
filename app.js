@@ -1409,22 +1409,31 @@
   function loadLocalData() {
     const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
 
-    // Auto-clean: Purge any accidental bleed of Seb's defaults from Vincent & Alice's space
+    // Auto-wipe & reseed Vincent & Alice's space with dedicated starter pack (1 trip, 10 activities)
     if (!isSebLynn) {
       try {
         const rawVaActs = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
         const rawVaTrips = localStorage.getItem(STORAGE_KEYS.TRIPS);
         const hasBleedActs = rawVaActs && (rawVaActs.includes('act_1') || rawVaActs.includes('買一套上班的衣服'));
         const hasBleedTrips = rawVaTrips && (rawVaTrips.includes('trip_1793202088746') || rawVaTrips.includes('trip_hokkaido'));
-        if (hasBleedActs || hasBleedTrips || localStorage.getItem('va_purged_seb_bleed_v2') !== 'done') {
-          localStorage.setItem(STORAGE_KEYS.ACTIVITIES, '[]');
-          localStorage.setItem(STORAGE_KEYS.TRIPS, '[]');
+        const needsReseed = hasBleedActs || hasBleedTrips || localStorage.getItem('va_seeded_1trip_10acts') !== 'v1';
+
+        if (needsReseed) {
+          const freshTrips = cloneDefaults(window.DEFAULT_VA_TRIPS || []).map(t => ({ ...t, updatedAt: t.updatedAt || 1 }));
+          const freshActs = cloneDefaults(window.DEFAULT_VA_ACTIVITIES || []).map(a => ({ ...a, updatedAt: a.updatedAt || 1 }));
+          localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(freshActs));
+          localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(freshTrips));
           localStorage.setItem(STORAGE_KEYS.DELETED_TRIPS, '[]');
           localStorage.setItem(STORAGE_KEYS.DELETED_ACTIVITIES, '[]');
+          localStorage.setItem('va_seeded_1trip_10acts', 'v1');
           localStorage.setItem('va_purged_seb_bleed_v2', 'done');
+          state.trips = freshTrips;
+          state.activities = freshActs;
+          state.deletedTripIds = new Set();
+          state.deletedActivityIds = new Set();
         }
       } catch (cleanErr) {
-        console.warn('VA clean error:', cleanErr);
+        console.warn('VA reseed error:', cleanErr);
       }
     }
 
@@ -1516,9 +1525,13 @@
         });
       }
     } else {
-      // Vincent & Alice space is isolated and starts completely empty
-      if (!Array.isArray(state.trips)) state.trips = [];
-      if (!Array.isArray(state.activities)) state.activities = [];
+      // Vincent & Alice space is isolated with its dedicated starter pack (1 trip, 10 activities)
+      if (!state.trips || state.trips.length === 0) {
+        state.trips = cloneDefaults(window.DEFAULT_VA_TRIPS || []).map(t => ({ ...t, updatedAt: t.updatedAt || 1 }));
+      }
+      if (!state.activities || state.activities.length === 0) {
+        state.activities = cloneDefaults(window.DEFAULT_VA_ACTIVITIES || []).map(a => ({ ...a, updatedAt: a.updatedAt || 1 }));
+      }
     }
   }
 
@@ -1918,10 +1931,16 @@
         const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
 
         if (!doc.exists) {
-          // Document does not exist yet; seed it with current state
+          // Document does not exist yet; seed it with current state or couple defaults
+          const seedActs = isSebLynn
+            ? (state.activities && state.activities.length ? state.activities : cloneDefaults(window.DEFAULT_ACTIVITIES))
+            : (state.activities && state.activities.length ? state.activities : cloneDefaults(window.DEFAULT_VA_ACTIVITIES));
+          const seedTrips = isSebLynn
+            ? (state.trips && state.trips.length ? state.trips : cloneDefaults(window.DEFAULT_TRIPS))
+            : (state.trips && state.trips.length ? state.trips : cloneDefaults(window.DEFAULT_VA_TRIPS));
           docRef.set({
-            activities: isSebLynn ? (state.activities && state.activities.length ? state.activities : cloneDefaults(window.DEFAULT_ACTIVITIES)) : (state.activities || []),
-            trips: isSebLynn ? (state.trips && state.trips.length ? state.trips : cloneDefaults(window.DEFAULT_TRIPS)) : (state.trips || []),
+            activities: seedActs,
+            trips: seedTrips,
             deletedTripIds: Array.from(state.deletedTripIds || []),
             deletedActivityIds: Array.from(state.deletedActivityIds || []),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1934,31 +1953,36 @@
         const data = doc.data();
         if (!data) return;
 
-        // Auto-purge polluted cloud room for Vincent & Alice if it contains Seb's leaked data
+        // Auto-wipe & reseed cloud room for Vincent & Alice with requested 1 trip and 10 activities
         if (!isSebLynn) {
           const hasSebBleedActs = Array.isArray(data.activities) && data.activities.some(a => a && a.id === 'act_1' && a.title === '買一套上班的衣服');
           const hasSebBleedTrips = Array.isArray(data.trips) && data.trips.some(t => t && (t.id === 'trip_1793202088746' || t.id === 'trip_hokkaido'));
-          if (hasSebBleedActs || hasSebBleedTrips) {
-            console.log('Purging leaked Seb data from Vincent & Alice cloud room...');
+          const needsCloudReset = hasSebBleedActs || hasSebBleedTrips || (Array.isArray(data.activities) && data.activities.length > 15) || localStorage.getItem('va_cloud_synced_1t10a') !== 'v1';
+
+          if (needsCloudReset) {
+            console.log('Resetting and seeding Vincent & Alice cloud room with 1 trip and 10 activities...');
+            const seedActs = (state.activities && state.activities.length > 0) ? state.activities : cloneDefaults(window.DEFAULT_VA_ACTIVITIES);
+            const seedTrips = (state.trips && state.trips.length > 0) ? state.trips : cloneDefaults(window.DEFAULT_VA_TRIPS);
             docRef.set({
-              activities: [],
-              trips: [],
+              activities: seedActs,
+              trips: seedTrips,
               deletedTripIds: [],
               deletedActivityIds: [],
               updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
               lastUpdatedBy: this.getDeviceId()
             });
-            state.activities = [];
-            state.trips = [];
+            state.activities = seedActs;
+            state.trips = seedTrips;
             state.deletedTripIds = new Set();
             state.deletedActivityIds = new Set();
             saveLocalData();
+            localStorage.setItem('va_cloud_synced_1t10a', 'v1');
             updateCounters();
             renderMapMarkers();
             renderActivitiesTable();
             renderTripsTable();
-            renderSelectedTripCard();
-            renderActivityCard(null);
+            if (state.trips.length > 0) selectTrip(state.trips[0]);
+            if (state.activities.length > 0) renderActivityCard(state.activities[0]);
             isInitialSnapshot = false;
             return;
           }
@@ -6106,7 +6130,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
     document.getElementById('btnReloadSeedData').addEventListener('click', () => {
       const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
       if (!isSebLynn) {
-        if (confirm('Clear all activities and trips in Vincent & Alice\'s space?')) {
+        if (confirm('Reset Vincent & Alice\'s database to starter list (1 trip, 10 activities)?')) {
           try {
             localStorage.setItem(STORAGE_KEYS.EMERGENCY_BACKUP, JSON.stringify({
               activities: state.activities,
@@ -6117,15 +6141,16 @@ environment must be one of: "indoor", "outdoor", "any".`;
 
           if (state.deletedTripIds) state.deletedTripIds.clear();
           if (state.deletedActivityIds) state.deletedActivityIds.clear();
-          state.activities = [];
-          state.trips = [];
+          const now = Date.now();
+          state.activities = cloneDefaults(window.DEFAULT_VA_ACTIVITIES).map(a => ({ ...a, updatedAt: now }));
+          state.trips = cloneDefaults(window.DEFAULT_VA_TRIPS).map(t => ({ ...t, updatedAt: now }));
           saveData();
           renderMapMarkers();
-          renderSelectedTripCard();
-          renderActivityCard(null);
+          if (state.trips.length > 0) selectTrip(state.trips[0]);
+          if (state.activities.length > 0) renderActivityCard(state.activities[0]);
           renderActivitiesTable();
           renderTripsTable();
-          alert('Vincent & Alice space cleared! (A safety backup was saved locally)');
+          alert('Vincent & Alice database reset to 1 trip and 10 activities & synchronized with cloud!');
         }
         return;
       }
