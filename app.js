@@ -800,16 +800,6 @@
         localStorage.removeItem(k);
       } catch (e) { }
     });
-
-    // Migrate any cached obsolete model names to standard gemini-2.5-flash
-    ['app_gemini_active_model', 'va_gemini_active_model'].forEach(k => {
-      try {
-        const m = localStorage.getItem(k);
-        if (m && m.startsWith('gemini-3.8')) {
-          localStorage.setItem(k, 'gemini-2.5-flash');
-        }
-      } catch (e) { }
-    });
   }
 
   function ensureFirebase() {
@@ -1523,8 +1513,6 @@
           ...a,
           updatedAt: a.updatedAt || 1
         }));
-        const { result } = sanitizeActivitiesList(state.activities);
-        state.activities = result;
       } else {
         state.activities.forEach(a => {
           if (!a.updatedAt) a.updatedAt = 1;
@@ -1685,8 +1673,8 @@
       }
     }
 
-    const { result: sanitizedActs } = sanitizeActivitiesList(Array.from(actMap.values()));
-    return { mergedActs: sanitizedActs, needsPush, hasRemoteChanges };
+    const mergedActs = Array.from(actMap.values());
+    return { mergedActs, needsPush, hasRemoteChanges };
   }
 
   // Real-Time BaaS Synchronization Engine (Firebase Firestore)
@@ -1936,11 +1924,11 @@
         const data = doc.data();
         if (!data) return;
 
-        // Auto-wipe & reseed cloud room for Vincent & Alice with requested 1 trip and 10 activities
+        // Auto-wipe & reseed cloud room for Vincent & Alice if Seb & Lynn defaults bled in
         if (!isSebLynn) {
           const hasSebBleedActs = Array.isArray(data.activities) && data.activities.some(a => a && a.id === 'act_1' && a.title === '買一套上班的衣服');
           const hasSebBleedTrips = Array.isArray(data.trips) && data.trips.some(t => t && (t.id === 'trip_1793202088746' || t.id === 'trip_hokkaido'));
-          const needsCloudReset = hasSebBleedActs || hasSebBleedTrips || (Array.isArray(data.activities) && data.activities.length > 15) || localStorage.getItem('va_cloud_synced_1t10a') !== 'v1';
+          const needsCloudReset = (hasSebBleedActs || hasSebBleedTrips) && localStorage.getItem('va_cloud_synced_1t10a') !== 'v1';
 
           if (needsCloudReset) {
             console.log('Resetting and seeding Vincent & Alice cloud room with 1 trip and 10 activities...');
@@ -2105,69 +2093,7 @@
     }
   };
 
-  const DEPRECATED_ACTIVITY_TITLES = new Set([
-    // Group 2: Chores & Housework & Errands (16 items)
-    '掃廁所', '洗電扇', '擦家裡的鏡子', '清理電腦鍵盤', '燙衣服',
-    '整理書桌', '整理衣櫃', '整理冰箱', '把廢紙摺成垃圾紙盒',
-    '粉刷牆壁', '改變房間格局', '重拍證件照', '把存錢筒的錢拿去銀行存錢',
-    '整理youtube頻道', '去捐血', '換新床單',
 
-    // Group 5: Dietary Constraints (5 items)
-    '吃素一天', '以水代替飲料', '整天吃原型食物', '吃圓形食物', '吃一天速食',
-
-    // Group 6: Ultra-Brief Actions (7 items)
-    '花100塊買手搖飲', '喝一瓶羊奶', '喝青草茶', '吃紅豆餅', '吃潤餅', '吃大麵羹', '吃麻薏湯',
-
-    // Group 1: Large group sports / gatherings (12 items)
-    '約朋友打桌球', '約朋友去桌遊店', '約朋友打壁球', '找朋友打漆彈',
-    '約朋友打羽球', '約朋友去國小打籃球', '打麻將', '和一群人玩跳跳床',
-    '約朋友烤肉', '去學校打躲避球', '去國小踢足球', '找朋友玩五子棋',
-
-    // Group 5: Multi-day novels & drama marathons (6 items)
-    '讀紅樓夢', '看一部武俠網路小說', '看宮鬥劇', '看韓劇', '看一部日劇', '看選秀節目',
-
-    // Group 6: Quirky, high-cost, or niche errands (18 items)
-    '不帶錢包手機去散步', '去公園畫三隻鳥', '寫國小數學題', '去家庭理髮院洗頭',
-    '去國術館', '體驗家中長輩的一天(五點甩手超慢跑、串門子、傍晚買菜)',
-    '練習溜溜球招式', '摺星星', '疊杯子', '偷偷送長輩500元的禮物',
-    '去百貨公司一樓買一件商品', '清空購物車', '到家具行買家具',
-    '做紅豆冰棒炊飯', '自製麵條', '刺繡', '曬太陽', '洗車',
-
-    // Individual tasks: 110, 122, 215, 124, 77, 202 (6 items)
-    '找出最吵的蟬', '挖蛤蠣', '看日出', '當志工', '露營', '在家露營'
-  ]);
-
-  const ACTIVITY_TITLE_FIXES = {
-    'Otaru Music Box Museum買一套上班的衣服': '買一套上班的衣服',
-    '間羅波高': '煎蘿蔔糕',
-    '完密室逃脫': '玩密室逃脫',
-    '買異國零時吃': '買異國零食吃',
-    '去泳游池游泳': '去游泳池游泳',
-    '嘗試沒剪過ㄉ髮型': '嘗試沒剪過的髮型'
-  };
-
-  let migrationApplied = false;
-
-  function sanitizeActivitiesList(list) {
-    if (!Array.isArray(list)) return { result: [], changed: false };
-    let changed = false;
-    const result = [];
-
-    for (const item of list) {
-      if (!migrationApplied && DEPRECATED_ACTIVITY_TITLES.has(item.title)) {
-        changed = true;
-        continue;
-      }
-      if (ACTIVITY_TITLE_FIXES[item.title]) {
-        changed = true;
-        result.push({ ...item, title: ACTIVITY_TITLE_FIXES[item.title] });
-      } else {
-        result.push(item);
-      }
-    }
-    migrationApplied = true;
-    return { result, changed };
-  }
 
   function cloneDefaults(obj) {
     return Array.isArray(obj) ? JSON.parse(JSON.stringify(obj)) : [];
