@@ -1869,6 +1869,17 @@
           }
         }
 
+        // Live update active itinerary modal if currently open
+        if (typeof activeItineraryTripId !== 'undefined' && activeItineraryTripId) {
+          const itinModal = document.getElementById('tripItineraryModal');
+          if (itinModal && itinModal.style.display !== 'none') {
+            const freshItinTrip = state.trips.find(t => t.id === activeItineraryTripId);
+            if (freshItinTrip) {
+              renderItineraryContent(freshItinTrip.itinerary, freshItinTrip);
+            }
+          }
+        }
+
         if (state.selectedActivity) {
           const freshAct = state.activities.find(a => a.id === state.selectedActivity.id);
           if (freshAct) renderActivityCard(freshAct);
