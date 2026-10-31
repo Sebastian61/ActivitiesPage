@@ -287,13 +287,15 @@ exports.aiGenerate = functions.https.onRequest(async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { type, query, coupleNames } = req.body || {};
+  const { type, query, coupleNames, geminiKey: bodyKey } = req.body || {};
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Query is required.' });
   }
 
   const couple = (typeof coupleNames === 'string' && coupleNames.trim()) ? coupleNames.trim() : 'Seb and Lynn';
-  const geminiKey = process.env.GEMINI_API_KEY || (functions.config().gemini && functions.config().gemini.key);
+  const geminiKey = (typeof bodyKey === 'string' && bodyKey.trim())
+    ? bodyKey.trim().replace(/^["']|["']$/g, '')
+    : (process.env.GEMINI_API_KEY || (functions.config().gemini && functions.config().gemini.key));
 
   if (geminiKey) {
     try {
@@ -368,6 +370,7 @@ Analyze the date idea "${query}" and return ONLY a valid JSON object matching th
   "occasion": "short",
   "budget": "$$",
   "environment": "indoor"
+}
 occasion must be one of: "short" (1-3hr date), "dateNight" (evening date), "wholeDay" (full day trip).
 budget must be one of: "$" (<NT$300), "$$" (NT$300-1000), "$$$" (NT$1000-3000), "$$$$" (>NT$3000).
 environment must be one of: "indoor", "outdoor", "any".`;
@@ -382,13 +385,12 @@ environment must be one of: "indoor", "outdoor", "any".`;
       });
 
       const candidateModels = [
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-flash-latest',
-        'gemma-4-26b-a4b-it',
-        'gemini-2.5-pro'
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash',
+        'gemini-2.5-pro',
+        'gemini-1.5-pro'
       ];
       for (const model of candidateModels) {
         try {

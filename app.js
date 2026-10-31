@@ -800,6 +800,16 @@
         localStorage.removeItem(k);
       } catch (e) { }
     });
+
+    // Migrate any cached obsolete model names to standard gemini-2.5-flash
+    ['app_gemini_active_model', 'va_gemini_active_model'].forEach(k => {
+      try {
+        const m = localStorage.getItem(k);
+        if (m && m.startsWith('gemini-3.8')) {
+          localStorage.setItem(k, 'gemini-2.5-flash');
+        }
+      } catch (e) { }
+    });
   }
 
   function ensureFirebase() {
@@ -1807,7 +1817,7 @@
         const geminiModelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
 
         if (typeof data.geminiApiKey === 'string' && data.geminiApiKey.trim()) {
-          const cloudGeminiKey = data.geminiApiKey.trim();
+          const cloudGeminiKey = data.geminiApiKey.trim().replace(/^["']|["']$/g, '');
           const currentLocalKey = localStorage.getItem(geminiKeyProp);
           if (cloudGeminiKey !== currentLocalKey) {
             localStorage.setItem(geminiKeyProp, cloudGeminiKey);
@@ -1816,7 +1826,8 @@
           }
         }
         if (typeof data.geminiModel === 'string' && data.geminiModel.trim()) {
-          const cloudModel = data.geminiModel.trim();
+          let cloudModel = data.geminiModel.trim();
+          if (cloudModel.startsWith('gemini-3.8')) cloudModel = 'gemini-2.5-flash';
           localStorage.setItem(geminiModelProp, cloudModel);
           updateModelUI(cloudModel);
         }
@@ -1994,7 +2005,12 @@
         const geminiKeyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
         const currentGeminiKey = localStorage.getItem(geminiKeyProp);
         if (currentGeminiKey) {
-          payload.geminiApiKey = currentGeminiKey.trim();
+          payload.geminiApiKey = currentGeminiKey.trim().replace(/^["']|["']$/g, '');
+        }
+        const geminiModelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+        const currentGeminiModel = localStorage.getItem(geminiModelProp);
+        if (currentGeminiModel) {
+          payload.geminiModel = currentGeminiModel.trim();
         }
         docRef.set(payload, { merge: true }).then(() => {
           if (dot) dot.className = 'cloud-dot connected';
@@ -2015,14 +2031,25 @@
 
       const docRef = this.getRoomDoc();
       if (!docRef) return;
-      docRef.set({
+      const payload = {
         activities: state.activities,
         trips: state.trips,
         deletedTripIds: Array.from(state.deletedTripIds || []).slice(-300),
         deletedActivityIds: Array.from(state.deletedActivityIds || []).slice(-300),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastUpdatedBy: this.getDeviceId()
-      }, { merge: true }).then(() => {
+      };
+      const geminiKeyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
+      const currentGeminiKey = localStorage.getItem(geminiKeyProp);
+      if (currentGeminiKey) {
+        payload.geminiApiKey = currentGeminiKey.trim().replace(/^["']|["']$/g, '');
+      }
+      const geminiModelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+      const currentGeminiModel = localStorage.getItem(geminiModelProp);
+      if (currentGeminiModel) {
+        payload.geminiModel = currentGeminiModel.trim();
+      }
+      docRef.set(payload, { merge: true }).then(() => {
         if (dot) dot.className = 'cloud-dot connected';
         showToast('☁️ Successfully pushed local collection to cloud!');
       }).catch(err => {
@@ -3146,30 +3173,36 @@
   }
 
   function formatModelDisplayName(modelName) {
-    if (modelName === 'gemini-3.8-flash') return '🧠 Gemini 3.8 Flash (Accurate Geography & Budget)';
-    if (modelName === 'gemini-3.5-flash-lite') return '⚡ Gemini 3.5 Flash Lite';
-    if (modelName === 'gemini-3.7-flash') return '✨ Gemini 3.7 Flash (Balanced & Multimodal)';
-    if (modelName === 'gemini-3.5-flash') return '💎 Gemini 3.5 Flash (Standard)';
-    if (modelName === 'gemma-4-26b-a4b-it') return '🌿 Gemma 4 26B (Open Weights MoE)';
+    if (modelName === 'gemini-2.5-flash') return '🧠 Gemini 2.5 Flash (Accurate Geography & Budget)';
+    if (modelName === 'gemini-2.0-flash') return '✨ Gemini 2.0 Flash (Fast & Balanced)';
+    if (modelName === 'gemini-2.0-flash-lite') return '⚡ Gemini 2.0 Flash Lite (Ultra Fast)';
+    if (modelName === 'gemini-1.5-flash') return '💎 Gemini 1.5 Flash (Standard)';
     if (modelName === 'gemini-2.5-pro') return '🔬 Gemini 2.5 Pro (Deep Reasoning)';
+    if (modelName === 'gemini-1.5-pro') return '🔬 Gemini 1.5 Pro';
+    if (modelName === 'gemini-3.7-flash') return '✨ Gemini 3.7 Flash';
+    if (modelName === 'gemini-3.5-flash-lite') return '⚡ Gemini 3.5 Flash Lite';
     if (modelName.includes('lite')) return `⚡ ${modelName} (Fast Lite)`;
     if (modelName.includes('pro')) return `🔬 ${modelName} (Pro Reasoning)`;
     return `🤖 ${modelName}`;
   }
 
   function formatModelShortPill(modelName) {
-    if (modelName === 'gemini-3.8-flash') return '🧠 3.8 Flash';
-    if (modelName === 'gemini-3.5-flash-lite') return '⚡ 3.5 Lite';
-    if (modelName === 'gemini-3.7-flash') return '✨ 3.7 Flash';
-    if (modelName === 'gemini-3.5-flash') return '💎 3.5 Flash';
-    if (modelName === 'gemma-4-26b-a4b-it') return '🌿 Gemma 26B';
+    if (modelName === 'gemini-2.5-flash') return '🧠 2.5 Flash';
+    if (modelName === 'gemini-2.0-flash') return '✨ 2.0 Flash';
+    if (modelName === 'gemini-2.0-flash-lite') return '⚡ 2.0 Lite';
+    if (modelName === 'gemini-1.5-flash') return '💎 1.5 Flash';
     if (modelName === 'gemini-2.5-pro') return '🔬 2.5 Pro';
+    if (modelName === 'gemini-1.5-pro') return '🔬 1.5 Pro';
+    if (modelName === 'gemini-3.7-flash') return '✨ 3.7 Flash';
+    if (modelName === 'gemini-3.5-flash-lite') return '⚡ 3.5 Lite';
     const clean = (modelName || '').replace(/^gemini-/, '');
     return `🤖 ${clean.length > 10 ? clean.substring(0, 9) + '…' : clean}`;
   }
 
   function updateModelUI(activeModel) {
-    const model = activeModel || localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
+    const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+    let model = activeModel || localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
+    if (model.startsWith('gemini-3.8')) model = 'gemini-2.5-flash';
     const shortText = formatModelShortPill(model);
     const tripPill = document.getElementById('labelTripActiveModel');
     const actPill = document.getElementById('labelActActiveModel');
@@ -3193,7 +3226,7 @@
 
     const descEl = document.getElementById('modelDetailText');
     if (descEl) {
-      if (model.includes('3.8') || model.includes('3.7')) {
+      if (model.includes('2.5-flash') || model.includes('2.0-flash')) {
         descEl.innerHTML = '🧠 <strong>Accurate Geography & Budget:</strong> Calibrated for Taiwan flight times and realistic NT$ costs.';
       } else if (model.includes('lite')) {
         descEl.innerHTML = '⚡ <strong>Ultra Fast / Lowest Latency:</strong> Generates within milliseconds.';
@@ -3201,7 +3234,6 @@
         descEl.innerHTML = `🤖 Active model: <code>${escapeHTML(model)}</code> (synced across devices).`;
       }
     }
-
   }
 
   function populateModelSelect(modelsList, modelsMetaArg) {
@@ -3211,14 +3243,16 @@
     let modelsMeta = modelsMetaArg;
     if (!modelsMeta) {
       try {
-        modelsMeta = JSON.parse(localStorage.getItem('app_gemini_models_meta') || '{}');
+        modelsMeta = JSON.parse(localStorage.getItem(STORAGE_KEYS.MODELS_META || 'app_gemini_models_meta') || '{}');
       } catch (e) {
         modelsMeta = {};
       }
     }
 
-    const currentActive = localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
-    const baseModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemma-4-26b-a4b-it'];
+    const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+    let currentActive = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
+    if (currentActive.startsWith('gemini-3.8')) currentActive = 'gemini-2.5-flash';
+    const baseModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
     const merged = [...new Set([...(modelsList || []), ...baseModels, currentActive])];
 
     const groups = {
@@ -3262,7 +3296,8 @@
   }
 
   async function autoDetectGeminiModels(key, showFeedback = true) {
-    const apiKey = key || localStorage.getItem('app_gemini_api_key') || '';
+    const keyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
+    const apiKey = (key || localStorage.getItem(keyProp) || localStorage.getItem('app_gemini_api_key') || localStorage.getItem('va_gemini_api_key') || '').trim().replace(/^["']|["']$/g, '');
     if (!apiKey) {
       if (showFeedback) showToast('Please enter an API key first to auto-detect models.', 'warning');
       return [];
@@ -3304,8 +3339,10 @@
       });
 
       if (available.length > 0) {
-        localStorage.setItem('app_gemini_detected_models', JSON.stringify(available));
-        localStorage.setItem('app_gemini_models_meta', JSON.stringify(modelsMeta));
+        const detectedKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.DETECTED_MODELS) ? STORAGE_KEYS.DETECTED_MODELS : 'app_gemini_detected_models';
+        const metaKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.MODELS_META) ? STORAGE_KEYS.MODELS_META : 'app_gemini_models_meta';
+        localStorage.setItem(detectedKey, JSON.stringify(available));
+        localStorage.setItem(metaKey, JSON.stringify(modelsMeta));
         populateModelSelect(available, modelsMeta);
         if (statusEl && showFeedback) {
           statusEl.innerHTML = `✅ <strong>Auto-Detected ${available.length} models!</strong> Grouped by Flash Lite, Flash, and Pro/Other with context limits.`;
@@ -3324,28 +3361,57 @@
     }
   }
 
-  function openCloudSyncModal() {
+  async function openCloudSyncModal() {
     const modal = document.getElementById('cloudSyncModal');
     if (modal) {
       modal.style.display = 'flex';
       sfx.whoosh();
       const input = document.getElementById('inputGeminiApiKey');
       const statusEl = document.getElementById('geminiKeyStatus');
-      const savedKey = localStorage.getItem('app_gemini_api_key') || '';
+      const keyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
+      const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+      
+      let savedKey = (localStorage.getItem(keyProp) || localStorage.getItem('app_gemini_api_key') || localStorage.getItem('va_gemini_api_key') || '').trim();
+
+      // If savedKey is empty, fetch proactively from Firebase room document
+      if (!savedKey && typeof cloudSync !== 'undefined' && typeof cloudSync.getRoomDoc === 'function') {
+        try {
+          const docRef = cloudSync.getRoomDoc();
+          if (docRef && docRef.get) {
+            const snap = await docRef.get();
+            if (snap && snap.exists) {
+              const rData = snap.data();
+              if (rData && rData.geminiApiKey) {
+                savedKey = rData.geminiApiKey.trim();
+                localStorage.setItem(keyProp, savedKey);
+              }
+              if (rData && rData.geminiModel) {
+                localStorage.setItem(modelProp, rData.geminiModel.trim());
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Firebase modal key fetch notice:', e);
+        }
+      }
+
       if (input) input.value = savedKey;
 
       // Populate detected models in select dropdown
       let detectedModels = [];
       try {
-        detectedModels = JSON.parse(localStorage.getItem('app_gemini_detected_models') || '[]');
+        const detectedKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.DETECTED_MODELS) ? STORAGE_KEYS.DETECTED_MODELS : 'app_gemini_detected_models';
+        detectedModels = JSON.parse(localStorage.getItem(detectedKey) || '[]');
       } catch (e) { }
       let modelsMeta = null;
       try {
-        modelsMeta = JSON.parse(localStorage.getItem('app_gemini_models_meta') || 'null');
+        const metaKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.MODELS_META) ? STORAGE_KEYS.MODELS_META : 'app_gemini_models_meta';
+        modelsMeta = JSON.parse(localStorage.getItem(metaKey) || 'null');
       } catch (e) { }
       populateModelSelect(detectedModels, modelsMeta);
 
-      const activeModel = localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
+      let activeModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
+      if (activeModel.startsWith('gemini-3.8')) activeModel = 'gemini-2.5-flash';
       updateModelUI(activeModel);
 
       // Auto-detect models in background if key is present
@@ -3666,38 +3732,89 @@
       return 'https://us-central1-couplelist-71b7a.cloudfunctions.net/aiGenerate';
     },
 
-    getGeminiApiKey() {
+    async getGeminiApiKey() {
       const keyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
-      return (
+      let key = (
         localStorage.getItem(keyProp) ||
         localStorage.getItem('app_gemini_api_key') ||
+        localStorage.getItem('va_gemini_api_key') ||
         (typeof window !== 'undefined' && window.GEMINI_API_KEY) ||
         ''
-      ).trim();
+      ).trim().replace(/^["']|["']$/g, '');
+
+      // Proactively pull key from active Firestore room document if not yet in localStorage
+      if (!key && typeof cloudSync !== 'undefined' && typeof cloudSync.getRoomDoc === 'function') {
+        try {
+          const docRef = cloudSync.getRoomDoc();
+          if (docRef && docRef.get) {
+            const snap = await docRef.get();
+            if (snap && snap.exists) {
+              const roomData = snap.data();
+              if (roomData && typeof roomData.geminiApiKey === 'string' && roomData.geminiApiKey.trim()) {
+                key = roomData.geminiApiKey.trim().replace(/^["']|["']$/g, '');
+                if (key) {
+                  localStorage.setItem(keyProp, key);
+                  const inputEl = document.getElementById('inputGeminiApiKey');
+                  if (inputEl) inputEl.value = key;
+                }
+              }
+              if (roomData && typeof roomData.geminiModel === 'string' && roomData.geminiModel.trim()) {
+                const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+                localStorage.setItem(modelProp, roomData.geminiModel.trim());
+                updateModelUI(roomData.geminiModel.trim());
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Proactive Firebase Gemini key fetch error:', err);
+        }
+      }
+
+      // Fallback: check default couple room if current room had no key saved
+      if (!key && typeof firebase !== 'undefined' && firebase.firestore && typeof COUPLE_PROFILES !== 'undefined') {
+        try {
+          const db = firebase.firestore();
+          const defaultRoomId = (COUPLE_PROFILES.seb_lynn && COUPLE_PROFILES.seb_lynn.roomId) || 'shared';
+          const sharedSnap = await db.collection('couples_rooms').doc(defaultRoomId).get();
+          if (sharedSnap && sharedSnap.exists) {
+            const sData = sharedSnap.data();
+            if (sData && typeof sData.geminiApiKey === 'string' && sData.geminiApiKey.trim()) {
+              key = sData.geminiApiKey.trim().replace(/^["']|["']$/g, '');
+              if (key) {
+                localStorage.setItem(keyProp, key);
+                const inputEl = document.getElementById('inputGeminiApiKey');
+                if (inputEl) inputEl.value = key;
+              }
+            }
+          }
+        } catch (e) { }
+      }
+
+      return key;
     },
 
     lastGeminiError: null,
 
     async callGeminiDirect(prompt, customModels) {
-      const apiKey = this.getGeminiApiKey();
+      const apiKey = await this.getGeminiApiKey();
       if (!apiKey) {
-        this.lastGeminiError = 'No Gemini API key set (enter in ☁️ Sync or Firebase).';
+        this.lastGeminiError = 'No Gemini API key set (enter in ⚙️ Settings or Firebase).';
         return null;
       }
 
       // Check for user-selected model preference or verified model
       const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-      const cachedModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-3.8-flash';
+      let cachedModel = localStorage.getItem(modelProp) || localStorage.getItem('app_gemini_active_model') || 'gemini-2.5-flash';
+      if (cachedModel.startsWith('gemini-3.8')) cachedModel = 'gemini-2.5-flash';
+
       const candidateModels = customModels || [
         cachedModel,
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-3.5-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-3-flash',
-        'gemini-flash-latest',
-        'gemma-4-26b-a4b-it',
-        'gemini-2.5-pro'
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash',
+        'gemini-2.5-pro',
+        'gemini-1.5-pro'
       ].filter(Boolean);
 
       const uniqueModels = [...new Set(candidateModels.map(m => m.replace(/^models\//, '')))];
@@ -3740,8 +3857,8 @@
         }
       }
 
-      // Fallback: If no candidate succeeded and no cached model was verified, dynamically discover models via ListModels
-      if (!cachedModel && !customModels) {
+      // Fallback: If no candidate succeeded, dynamically discover models via ListModels
+      if (!customModels) {
         try {
           const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
           if (listResp.ok) {
@@ -3750,8 +3867,10 @@
               .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
               .map(m => (m.name || '').replace(/^models\//, ''))
               .filter(Boolean);
-            const discovered = supported.find(m => m.includes('flash')) || supported[0];
-            if (discovered && !uniqueModels.includes(discovered)) {
+            const discovered = supported.find(m => m.includes('flash') && !uniqueModels.includes(m)) ||
+                               supported.find(m => !uniqueModels.includes(m));
+            if (discovered) {
+              console.log(`Using dynamically discovered Gemini model: ${discovered}`);
               return await this.callGeminiDirect(prompt, [discovered]);
             }
           }
@@ -3768,7 +3887,7 @@
       if (!query) throw new Error('Please enter a destination place name.');
 
       // 1. Try Direct Google Gemini API (if user configured a Gemini key)
-      const directKey = this.getGeminiApiKey();
+      const directKey = await this.getGeminiApiKey();
       if (!directKey) {
         this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
       } else {
@@ -3840,23 +3959,23 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
         }
       }
 
-      // 2. Try serverless backend (/api/aiGenerate or direct Cloud Function)
+      // 2. Try serverless backend (/api/aiGenerate or direct Cloud Function) with key fallback
       try {
         const srvResp = await fetch(this.getServerlessEndpoint(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'trip', query, coupleNames: getCoupleNames() })
+          body: JSON.stringify({ type: 'trip', query, coupleNames: getCoupleNames(), geminiKey: directKey })
         });
         if (srvResp.ok) {
           const srvData = await srvResp.json();
           if (srvData && srvData.success && srvData.spec) {
             if (srvData.spec.seasons) srvData.spec.seasons = normalizeSeasons(srvData.spec.seasons);
-            srvData.spec._source = 'Firebase Cloud Function (Gemini)';
+            srvData.spec._source = srvData.source || 'Firebase Cloud Function (Gemini)';
             return srvData.spec;
           }
         }
       } catch (e) {
-        // Serverless offline; proceed to Client Heuristics
+        // Serverless offline; report error
       }
 
       // No fallback: throw error if AI is down or unavailable
@@ -3868,7 +3987,7 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
       const query = (placeName || '').trim();
       if (!query) throw new Error('Please enter a destination name first.');
 
-      const directKey = this.getGeminiApiKey();
+      const directKey = await this.getGeminiApiKey();
       if (!directKey) {
         this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
       } else {
@@ -3909,7 +4028,7 @@ BANNED CLICHÉS: NEVER use formulaic phrases like "漫步在充滿浪漫氛圍�
       if (!query) throw new Error('Please enter a date activity thought.');
 
       // 1. Try Direct Google Gemini API (if user configured a Gemini key)
-      const directKey = this.getGeminiApiKey();
+      const directKey = await this.getGeminiApiKey();
       if (!directKey) {
         this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
       } else {
@@ -3932,17 +4051,17 @@ environment must be one of: "indoor", "outdoor", "any".`;
         }
       }
 
-      // 2. Try serverless backend (/api/aiGenerate or direct Cloud Function)
+      // 2. Try serverless backend (/api/aiGenerate or direct Cloud Function) with key fallback
       try {
         const srvResp = await fetch(this.getServerlessEndpoint(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'activity', query, coupleNames: getCoupleNames() })
+          body: JSON.stringify({ type: 'activity', query, coupleNames: getCoupleNames(), geminiKey: directKey })
         });
         if (srvResp.ok) {
           const srvData = await srvResp.json();
           if (srvData && srvData.success && srvData.spec) {
-            srvData.spec._source = 'Firebase Cloud Function (Gemini)';
+            srvData.spec._source = srvData.source || 'Firebase Cloud Function (Gemini)';
             return srvData.spec;
           }
         }
@@ -4426,7 +4545,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
     const geminiKeyStatus = document.getElementById('geminiKeyStatus');
     if (btnSaveGeminiKey && inputGeminiApiKey) {
       btnSaveGeminiKey.addEventListener('click', () => {
-        const key = inputGeminiApiKey.value.trim();
+        const key = inputGeminiApiKey.value.trim().replace(/^["']|["']$/g, '');
         const geminiKeyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
         if (key) {
           localStorage.setItem(geminiKeyProp, key);
@@ -4442,7 +4561,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
           }
         } else {
           localStorage.removeItem(geminiKeyProp);
-          if (geminiKeyStatus) geminiKeyStatus.textContent = 'Cleared. App will use the free built-in local geocoding engine.';
+          if (geminiKeyStatus) geminiKeyStatus.textContent = 'Cleared. Please enter an API key to enable AI Autofill.';
           showToast('Gemini API key cleared.');
           sfx.tap();
           const docRef = (cloudSync && typeof cloudSync.getRoomDoc === 'function') ? cloudSync.getRoomDoc() : null;
@@ -4477,7 +4596,8 @@ environment must be one of: "indoor", "outdoor", "any".`;
     const btnRefresh = document.getElementById('btnRefreshModels');
     if (btnRefresh) {
       btnRefresh.addEventListener('click', () => {
-        const key = inputGeminiApiKey.value.trim() || localStorage.getItem('app_gemini_api_key');
+        const keyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
+        const key = inputGeminiApiKey.value.trim().replace(/^["']|["']$/g, '') || localStorage.getItem(keyProp) || localStorage.getItem('app_gemini_api_key') || localStorage.getItem('va_gemini_api_key') || '';
         autoDetectGeminiModels(key, true);
       });
     }
@@ -4500,7 +4620,9 @@ environment must be one of: "indoor", "outdoor", "any".`;
     const btnTestGeminiKey = document.getElementById('btnTestGeminiKey');
     if (btnTestGeminiKey && inputGeminiApiKey) {
       btnTestGeminiKey.addEventListener('click', async () => {
-        const key = inputGeminiApiKey.value.trim() || localStorage.getItem('app_gemini_api_key');
+        const keyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
+        const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+        const key = (inputGeminiApiKey.value.trim() || localStorage.getItem(keyProp) || localStorage.getItem('app_gemini_api_key') || localStorage.getItem('va_gemini_api_key') || '').trim().replace(/^["']|["']$/g, '');
         if (!key) {
           if (geminiKeyStatus) geminiKeyStatus.innerHTML = '⚠️ Please paste your API key from Google AI Studio first.';
           sfx.errorNudge();
@@ -4546,26 +4668,30 @@ environment must be one of: "indoor", "outdoor", "any".`;
 
           // Update cached detected models and populate select dropdown!
           if (availableModels.length > 0) {
-            localStorage.setItem('app_gemini_detected_models', JSON.stringify(availableModels));
-            localStorage.setItem('app_gemini_models_meta', JSON.stringify(modelsMeta));
+            const detectedKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.DETECTED_MODELS) ? STORAGE_KEYS.DETECTED_MODELS : 'app_gemini_detected_models';
+            const metaKey = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.MODELS_META) ? STORAGE_KEYS.MODELS_META : 'app_gemini_models_meta';
+            localStorage.setItem(detectedKey, JSON.stringify(availableModels));
+            localStorage.setItem(metaKey, JSON.stringify(modelsMeta));
             populateModelSelect(availableModels, modelsMeta);
           }
 
           // Preferred model from select dropdown or cached preference
-          const preferredModel = (document.getElementById('selectGeminiModel')?.value) ||
+          let preferredModel = (document.getElementById('selectGeminiModel')?.value) ||
+            localStorage.getItem(modelProp) ||
             localStorage.getItem('app_gemini_active_model') ||
-            'gemini-3.8-flash';
+            'gemini-2.5-flash';
+          if (preferredModel.startsWith('gemini-3.8')) preferredModel = 'gemini-2.5-flash';
 
-          // Build prioritized test queue: Preferred model first, then smart & fast candidates
+          // Build prioritized test queue: Preferred model first, then real Google models, then any discovered
           const candidatesToTry = [
             preferredModel,
-            'gemini-3.8-flash',
-            'gemini-3.7-flash',
-            'gemini-3.5-flash-lite',
-            'gemini-3.5-flash',
-            'gemini-3-flash',
-            ...availableModels.filter(m => !m.includes('tts') && !m.includes('image') && m !== 'gemini-2.5-flash'),
-            'gemma-4-26b-a4b-it'
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-1.5-flash',
+            'gemini-2.5-pro',
+            'gemini-1.5-pro',
+            ...availableModels.filter(m => !m.includes('tts') && !m.includes('image'))
           ];
           const testQueue = [...new Set(candidatesToTry.map(m => m.replace(/^models\//, '')))];
 
@@ -4601,9 +4727,7 @@ environment must be one of: "indoor", "outdoor", "any".`;
           }
 
           if (verifiedModel) {
-            const geminiKeyProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_KEY) ? STORAGE_KEYS.GEMINI_KEY : 'app_gemini_api_key';
-            const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-            localStorage.setItem(geminiKeyProp, key);
+            localStorage.setItem(keyProp, key);
             localStorage.setItem(modelProp, verifiedModel);
             updateModelUI(verifiedModel);
 
