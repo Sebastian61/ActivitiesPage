@@ -1510,10 +1510,10 @@
 
       // Populate pre-generated itineraries from defaults if missing locally
       if (Array.isArray(state.trips) && Array.isArray(window.DEFAULT_TRIPS)) {
-        const defMap = new Map(window.DEFAULT_TRIPS.filter(t => t && t.id && t.itinerary).map(t => [t.id, t.itinerary]));
+        const defMap = new Map(window.DEFAULT_TRIPS.filter(t => t && t.id && t.itinerary && t.itinerary.days?.length).map(t => [t.id, t.itinerary]));
         state.trips.forEach(t => {
-          if (!t.itinerary && defMap.has(t.id)) {
-            t.itinerary = defMap.get(t.id);
+          if ((!t.itinerary || !t.itinerary.days || t.itinerary.days.length === 0) && defMap.has(t.id)) {
+            t.itinerary = JSON.parse(JSON.stringify(defMap.get(t.id)));
           }
         });
       }
@@ -1591,12 +1591,14 @@
           if (remoteTime > localTime) {
             // Remote is newer
             const merged = { ...rt };
-            if (!merged.itinerary && lt.itinerary) merged.itinerary = lt.itinerary;
+            if ((!merged.itinerary || !merged.itinerary.days?.length) && lt.itinerary?.days?.length) {
+              merged.itinerary = lt.itinerary;
+            }
             tripMap.set(rt.id, merged);
             hasRemoteChanges = true;
           } else if (localTime > remoteTime) {
             // Local is newer: preserve local and signal cloud push (adopt remote itinerary if local lacks it)
-            if (!lt.itinerary && rt.itinerary) {
+            if ((!lt.itinerary || !lt.itinerary.days?.length) && rt.itinerary?.days?.length) {
               lt.itinerary = rt.itinerary;
               hasRemoteChanges = true;
             }
@@ -1604,11 +1606,12 @@
             needsPush = true;
           } else {
             // Timestamps equal: merge safely (preserve visited & itinerary if either has it)
+            const chosenItin = (lt.itinerary?.days?.length ? lt.itinerary : null) || (rt.itinerary?.days?.length ? rt.itinerary : null);
             const merged = {
               ...lt,
               ...rt,
               visited: Boolean(lt.visited || rt.visited),
-              itinerary: lt.itinerary || rt.itinerary || undefined,
+              itinerary: chosenItin || undefined,
               updatedAt: Math.max(localTime, remoteTime) || 1
             };
             if (!merged.itinerary) delete merged.itinerary;
@@ -1624,6 +1627,18 @@
       for (const [id] of tripMap) {
         if (!remoteIds.has(id)) {
           needsPush = true;
+        }
+      }
+    }
+
+    // 4. Backfill any missing itinerary in tripMap from defaults
+    const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
+    const defSource = isSebLynn ? window.DEFAULT_TRIPS : window.DEFAULT_VA_TRIPS;
+    if (Array.isArray(defSource)) {
+      const defMap = new Map(defSource.filter(d => d && d.id && d.itinerary?.days?.length).map(d => [d.id, d.itinerary]));
+      for (const t of tripMap.values()) {
+        if ((!t.itinerary || !t.itinerary.days || t.itinerary.days.length === 0) && defMap.has(t.id)) {
+          t.itinerary = JSON.parse(JSON.stringify(defMap.get(t.id)));
         }
       }
     }
@@ -4268,6 +4283,20 @@ CRITICAL RULES:
     }
 
     activeItineraryTripId = trip.id;
+
+    // Auto-rescue missing itinerary from default data if not present locally
+    if (!trip.itinerary || !Array.isArray(trip.itinerary.days) || trip.itinerary.days.length === 0) {
+      const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
+      const defSource = isSebLynn ? window.DEFAULT_TRIPS : window.DEFAULT_VA_TRIPS;
+      if (Array.isArray(defSource)) {
+        const match = defSource.find(dt => dt && dt.id === trip.id);
+        if (match && match.itinerary && Array.isArray(match.itinerary.days) && match.itinerary.days.length > 0) {
+          trip.itinerary = JSON.parse(JSON.stringify(match.itinerary));
+          saveData(true);
+        }
+      }
+    }
+
     const modal = document.getElementById('tripItineraryModal');
     if (!modal) return;
 
