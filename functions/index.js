@@ -302,7 +302,7 @@ exports.aiGenerate = functions.https.onRequest(async (req, res) => {
     try {
       const https = require('https');
       if (type === 'itinerary') {
-        const { mode, targetDays, pace, locationName, seasons, destinationName } = req.body || {};
+        const { mode, targetDays, pace, locationName, seasons, destinationName, foodPricing, foodStyles } = req.body || {};
         const allowedModes = ['daily', 'area', 'vibe', 'foodie', 'highlights', 'photo', 'daytrips', 'stays', 'budget'];
         const itinMode = allowedModes.includes(mode) ? mode : 'daily';
         const daysCount = parseInt(targetDays, 10) || 5;
@@ -358,20 +358,42 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 CRITICAL RULES: Provide 4 to 5 mood groups with 3 to 4 real items each. Output all prose in Traditional Chinese (繁體中文).`;
         } else if (itinMode === 'foodie') {
+          const priceMap = {
+            all: 'Include a balanced mix of affordable street eats, mid-range bistros, and special-occasion spots.',
+            budget: 'Focus strictly on affordable street food, market stalls, casual local eateries, and great-value spots ($).',
+            mid: 'Focus on comfortable mid-range restaurants, brunches, cafes, and neighborhood bistros ($$).',
+            splurge: 'Focus on acclaimed restaurants, chef tasting menus, omakase, scenic bistros, and refined date-night spots ($$$ / $$$$).'
+          };
+          const styleMap = {
+            local: 'authentic local neighborhood favorites',
+            brunch: 'brunches, bakeries & specialty cafés',
+            famous: 'famous iconic eateries & heritage shops',
+            street: 'street food, night markets & casual snacks',
+            bars: 'artisan desserts, gelato, wine & cocktail bars',
+            romantic: 'intimate date-night dining spots'
+          };
+          const priceRule = priceMap[foodPricing] || priceMap.all;
+          const cleanStyles = Array.isArray(foodStyles) ? foodStyles.map(s => styleMap[s]).filter(Boolean) : [];
+          const styleRule = cleanStyles.length > 0
+            ? `Prioritize and focus specifically on these spot types: ${cleanStyles.join(', ')}.`
+            : 'Include a well-rounded mix of local spots, cafes/brunches, famous eateries, street food, and desserts/bars.';
+
           prompt = `You are a romantic culinary & cafe travel curator for ${couple}, a loving couple departing from Taiwan.
-Create an uncategorized Foodie & Café Trail for "${dest}" (${loc})—do NOT sort or split places into meal categories or buckets. Simply list standout local restaurants, cafes, bakeries, markets, dessert spots, and bars in a single flat list.
+Create an uncategorized Foodie & Café Trail for "${dest}" (${loc})—do NOT sort or split places into meal categories or buckets. Simply list standout places in a single flat list.
 Seasons: ${seasonInfo}
+PRICING PREFERENCE: ${priceRule}
+SPOT STYLE FOCUS: ${styleRule}
 
 Return ONLY a valid JSON object matching this exact schema:
 {
   "mode": "foodie",
-  "summary": "2-3 vivid sentences in Traditional Chinese describing the kinds of food, signature local flavors, and dining culture you'll find in ${dest}.",
+  "summary": "2-3 vivid sentences in Traditional Chinese describing the kinds of food, signature local flavors, and dining culture matching the chosen pricing & spot preferences in ${dest}.",
   "items": [
-    { "name": "Specific Spot Name", "area": "District tag", "foodType": "Short description of the kind of food served there in Traditional Chinese", "mustOrder": "Signature item to order", "note": "1-sentence highlight or reservation tip in Traditional Chinese" }
+    { "name": "Specific Spot Name", "area": "District tag", "foodType": "Short description of the kind of food served there in Traditional Chinese", "priceTier": "$ | $$ | $$$", "mustOrder": "Signature item to order", "note": "1-sentence highlight or reservation tip in Traditional Chinese" }
   ],
   "tips": "2-3 practical dining tips in Traditional Chinese."
 }
-CRITICAL RULES: Provide 8 to 12 diverse, real spots directly in the flat 'items' array (do NOT group into categories), each with 'foodType' and 'mustOrder'. Output all prose in Traditional Chinese (繁體中文).`;
+CRITICAL RULES: Provide 8 to 12 diverse, real spots matching the PRICING PREFERENCE and SPOT STYLE FOCUS directly in the flat 'items' array (do NOT group into categories), each with 'foodType', 'priceTier' ($/$$/$$$), and 'mustOrder'. Output all prose in Traditional Chinese (繁體中文).`;
         } else if (itinMode === 'highlights') {
           prompt = `You are an insider romantic travel strategist for ${couple}, a loving couple departing from Taiwan.
 Create a high-signal "Must-Dos & Hidden Gems" cheat sheet for "${dest}" (${loc}).
@@ -642,6 +664,12 @@ environment must be one of: "indoor", "outdoor", "any".`;
                 } else if (['foodie', 'photo', 'daytrips', 'stays', 'budget'].includes(spec.mode)) {
                   if (!Array.isArray(spec.items) && Array.isArray(spec.places)) {
                     spec.items = spec.places;
+                  }
+                  if (spec.mode === 'foodie') {
+                    const fp = req.body && req.body.foodPricing;
+                    const fsArr = req.body && req.body.foodStyles;
+                    if (['all', 'budget', 'mid', 'splurge'].includes(fp)) spec.foodPricing = fp;
+                    if (Array.isArray(fsArr) && fsArr.length > 0) spec.foodStyles = fsArr;
                   }
                   if (Array.isArray(spec.groups)) {
                     spec.groups.forEach(g => {

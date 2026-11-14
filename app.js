@@ -968,8 +968,12 @@
     const footerBrand = document.getElementById('footerBrand');
     if (footerBrand) footerBrand.textContent = couple.names;
 
-    // 3. Document Title
-    document.title = `Sync & Sway — ${couple.names}`;
+    // 3. Document Title (preserve active AI counter if any)
+    if (typeof aiJobTracker !== 'undefined') {
+      aiJobTracker.updateDocumentTitle();
+    } else {
+      document.title = `Sync & Sway — ${couple.names}`;
+    }
 
     // 4. Cloud Modal Subtitle & Title Badge
     const cloudModalSubtitle = document.getElementById('cloudModalSubtitle');
@@ -1045,6 +1049,9 @@
     state.isAuthenticated = false;
     state.currentUser = null;
     document.body.classList.add('is-locked');
+    if (typeof aiJobTracker !== 'undefined') {
+      aiJobTracker.reset();
+    }
 
     // Sign out from Firebase Auth
     if (typeof firebase !== 'undefined' && firebase.auth) {
@@ -1515,6 +1522,72 @@
       emptyDesc: 'See which rail/transit passes are worth buying, what needs advance booking, and smart splurge-vs-save tips.',
       loadingTitle: 'Building Budget & Passes Guide',
       loadingDesc: 'Checking transit passes, booking windows, and couple splurge-vs-save strategies'
+    }
+  };
+
+  const FOODIE_PRICE_TIERS = {
+    all: {
+      id: 'all',
+      label: '✨ All Prices',
+      badge: 'All Prices',
+      promptRule: 'Include a balanced mix of affordable street eats, mid-range bistros, and special-occasion spots.'
+    },
+    budget: {
+      id: 'budget',
+      label: '$ Casual & Street',
+      badge: '$ Budget',
+      promptRule: 'Focus strictly on affordable street food, market stalls, casual local eateries, and great-value spots ($).'
+    },
+    mid: {
+      id: 'mid',
+      label: '$$ Mid-Range',
+      badge: '$$ Mid-Range',
+      promptRule: 'Focus on comfortable mid-range restaurants, brunches, cafes, and neighborhood bistros ($$).'
+    },
+    splurge: {
+      id: 'splurge',
+      label: '$$$ Special Treat',
+      badge: '$$$ Upscale',
+      promptRule: 'Focus on acclaimed restaurants, chef tasting menus, omakase, scenic bistros, and refined date-night spots ($$$ / $$$$).'
+    }
+  };
+
+  const FOODIE_STYLE_OPTIONS = {
+    local: {
+      id: 'local',
+      label: '🏠 Local Spots',
+      badge: 'Local Spots',
+      promptLabel: 'authentic neighborhood local-favorite eateries away from tourist traps'
+    },
+    brunch: {
+      id: 'brunch',
+      label: '🥞 Brunches & Cafés',
+      badge: 'Brunches & Cafés',
+      promptLabel: 'specialty coffee shops, bakeries, morning brunch houses, and afternoon cafés'
+    },
+    famous: {
+      id: 'famous',
+      label: '⭐ Famous Eateries',
+      badge: 'Famous Eateries',
+      promptLabel: 'famous iconic eateries, long-standing heritage shops, and acclaimed must-visit institutions'
+    },
+    street: {
+      id: 'street',
+      label: '🍢 Street Food',
+      badge: 'Street Food',
+      promptLabel: 'bustling night markets, food stalls, local snacks, and casual quick bites'
+    },
+    bars: {
+      id: 'bars',
+      label: '🍸 Desserts & Bars',
+      badge: 'Desserts & Bars',
+      promptLabel: 'artisan desserts, gelato/bakery parlors, cocktail lounges, and late-night izakayas/bistros'
+    },
+    romantic: {
+      id: 'romantic',
+      label: '🥂 Date Dining',
+      badge: 'Date Dining',
+      promptLabel: 'intimate, cozy date-night restaurants ideal for a romantic couple evening'
     }
   };
 
@@ -2219,13 +2292,16 @@
           }
         }
 
-        // Live update active itinerary modal if currently open
+        // Live update active itinerary modal if currently open (unless generation is actively running for it)
         if (typeof activeItineraryTripId !== 'undefined' && activeItineraryTripId) {
           const itinModal = document.getElementById('tripItineraryModal');
           if (itinModal && itinModal.style.display !== 'none') {
-            const freshItinTrip = state.trips.find(t => t.id === activeItineraryTripId);
-            if (freshItinTrip) {
-              renderItineraryContent(freshItinTrip.itinerary, freshItinTrip);
+            const activeJob = typeof aiJobTracker !== 'undefined' ? aiJobTracker.getActiveTripJob(activeItineraryTripId) : null;
+            if (!activeJob) {
+              const freshItinTrip = state.trips.find(t => t.id === activeItineraryTripId);
+              if (freshItinTrip) {
+                renderItineraryContent(freshItinTrip.itinerary, freshItinTrip);
+              }
             }
           }
         }
@@ -2630,7 +2706,6 @@
     // World offsets for seamless horizontal wrapping across adjacent copies of the world
     const worldOffsets = [-360, 0, 360];
     const activeScope = state.tripFilters ? state.tripFilters.scope : 'all';
-    const activeScope = state.tripFilters ? state.tripFilters.scope : 'all';
 
     state.trips.forEach((trip) => {
       if (trip.lat == null || isNaN(trip.lat) || trip.lng == null || isNaN(trip.lng)) return;
@@ -2769,13 +2844,21 @@
     // Itinerary button indicator
     const itinBtn = document.getElementById('stItineraryBtn');
     if (itinBtn) {
-      if (hasItineraryContent(trip.itinerary)) {
-        const badgeText = getItineraryButtonBadge(trip.itinerary);
-        itinBtn.innerHTML = `✨ Itinerary${badgeText ? ` <span style="font-size:0.7rem; opacity:0.85;">(${escapeHTML(badgeText)})</span>` : ''}`;
-        itinBtn.title = 'View Planned AI Itinerary';
+      const activeItinJob = typeof aiJobTracker !== 'undefined' ? aiJobTracker.getActiveTripJob(trip.id) : null;
+      if (activeItinJob) {
+        itinBtn.classList.add('is-generating');
+        itinBtn.innerHTML = '⏳ Generating…';
+        itinBtn.title = activeItinJob.detail || 'AI is generating itinerary';
       } else {
-        itinBtn.innerHTML = '🗺️ Itinerary';
-        itinBtn.title = 'Plan AI Itinerary';
+        itinBtn.classList.remove('is-generating');
+        if (hasItineraryContent(trip.itinerary)) {
+          const badgeText = getItineraryButtonBadge(trip.itinerary);
+          itinBtn.innerHTML = `✨ Itinerary${badgeText ? ` <span style="font-size:0.7rem; opacity:0.85;">(${escapeHTML(badgeText)})</span>` : ''}`;
+          itinBtn.title = 'View Planned AI Itinerary';
+        } else {
+          itinBtn.innerHTML = '🗺️ Itinerary';
+          itinBtn.title = 'Plan AI Itinerary';
+        }
       }
     }
   }
@@ -3355,7 +3438,7 @@
           <td>${escapeHTML(seasonsText)}</td>
           <td class="table-actions-cell">
             <div class="table-actions-wrap">
-              <button class="btn-itinerary-table" data-id="${escapeHTML(t.id)}" title="${hasItineraryContent(t.itinerary) ? 'View Saved AI Itinerary' : 'Plan AI Itinerary'}">${hasItineraryContent(t.itinerary) ? '✨' : '🧭'}</button>
+              ${renderTripTableItineraryButton(t)}
               <button class="btn-locate-trip trip-fly-trigger" data-id="${escapeHTML(t.id)}" title="Locate & Fly to Map">🗺️</button>
               <button class="btn-edit-table" data-id="${escapeHTML(t.id)}" title="Edit Destination">✏️</button>
               <button class="btn-del" data-id="${escapeHTML(t.id)}" title="Delete">✕</button>
@@ -4175,6 +4258,192 @@
   // =========================================================================
   // 12. AI Smart Assistant Engine (Gemini Direct + Serverless)
   // =========================================================================
+  const aiJobTracker = {
+    jobs: [],
+    nextId: 1,
+
+    getBaseTitle() {
+      return state.currentCouple
+        ? `Sync & Sway — ${state.currentCouple.names}`
+        : 'Sync & Sway — Date & Getaway Hub';
+    },
+
+    updateDocumentTitle() {
+      const runningCount = this.jobs.filter(j => j.status === 'running').length;
+      const base = this.getBaseTitle();
+      document.title = runningCount > 0 ? `⏳ (${runningCount}) ${base}` : base;
+    },
+
+    start({ kind, targetId = null, title, detail = 'Waiting for AI response...', loadingHeading = '', loadingDesc = '' }) {
+      const id = `ai_job_${this.nextId++}`;
+      // Remove any old completed/error entry for the same target so list stays concise
+      this.jobs = this.jobs.filter(j => !(j.kind === kind && j.targetId === targetId && j.status !== 'running'));
+      this.jobs.unshift({
+        id,
+        kind,
+        targetId,
+        title,
+        detail,
+        loadingHeading,
+        loadingDesc,
+        status: 'running',
+        startedAt: Date.now(),
+        completedAt: null
+      });
+      this.render();
+      return id;
+    },
+
+    update(id, patch) {
+      const job = this.jobs.find(j => j.id === id);
+      if (!job) return;
+      Object.assign(job, patch);
+      this.render();
+    },
+
+    finish(id, detail = 'Ready to review') {
+      const job = this.jobs.find(j => j.id === id);
+      if (!job) return;
+      job.status = 'ready';
+      job.detail = detail;
+      job.completedAt = Date.now();
+      this.render();
+    },
+
+    fail(id, errorMsg = 'Request failed') {
+      const job = this.jobs.find(j => j.id === id);
+      if (!job) return;
+      job.status = 'error';
+      job.detail = errorMsg;
+      job.completedAt = Date.now();
+      this.render();
+    },
+
+    dismiss(id) {
+      this.jobs = this.jobs.filter(j => j.id !== id);
+      this.render();
+    },
+
+    dismissByTarget(kind, targetId) {
+      const before = this.jobs.length;
+      this.jobs = this.jobs.filter(j => !(j.kind === kind && j.targetId === targetId && j.status !== 'running'));
+      if (this.jobs.length !== before) this.render();
+    },
+
+    settleForModal(id, modalId, isSuccess, detail) {
+      const modalEl = document.getElementById(modalId);
+      const isVisible = modalEl && modalEl.style.display && modalEl.style.display !== 'none';
+      if (isVisible) {
+        this.dismiss(id);
+      } else if (isSuccess) {
+        this.finish(id, detail);
+      } else {
+        this.fail(id, detail);
+      }
+    },
+
+    clearCompleted() {
+      this.jobs = this.jobs.filter(j => j.status === 'running');
+      const popover = document.getElementById('aiJobsPopover');
+      if (popover && this.jobs.length === 0) popover.style.display = 'none';
+      this.render();
+    },
+
+    reset() {
+      this.jobs = [];
+      const popover = document.getElementById('aiJobsPopover');
+      const btn = document.getElementById('btnAiStatus');
+      if (popover) popover.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+      this.render();
+    },
+
+    getActiveTripJob(tripId) {
+      if (!tripId) return null;
+      return this.jobs.find(j => j.kind === 'itinerary' && j.targetId === tripId && j.status === 'running') || null;
+    },
+
+    openJobTarget(jobId) {
+      const job = this.jobs.find(j => j.id === jobId);
+      if (!job) return;
+
+      const popover = document.getElementById('aiJobsPopover');
+      const btn = document.getElementById('btnAiStatus');
+      if (popover) popover.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+
+      if (job.kind === 'itinerary' && job.targetId) {
+        openItineraryModal(job.targetId);
+      } else if (job.kind === 'trip' || job.kind === 'trip-desc') {
+        const modal = document.getElementById('addTripModal');
+        if (modal) modal.style.display = 'flex';
+      } else if (job.kind === 'activity') {
+        const modal = document.getElementById('addActivityModal');
+        if (modal) modal.style.display = 'flex';
+      }
+
+      if (job.status !== 'running') {
+        this.dismiss(job.id);
+      }
+    },
+
+    render() {
+      this.updateDocumentTitle();
+
+      const wrap = document.getElementById('aiStatusWrap');
+      const btn = document.getElementById('btnAiStatus');
+      const badge = document.getElementById('aiStatusBadge');
+      const list = document.getElementById('aiJobsList');
+      const clearBtn = document.getElementById('btnAiClearDone');
+      const popover = document.getElementById('aiJobsPopover');
+      if (!wrap || !btn || !badge) return;
+
+      if (this.jobs.length === 0) {
+        wrap.style.display = 'none';
+        if (popover) popover.style.display = 'none';
+        btn.classList.remove('running', 'ready', 'error');
+        btn.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      wrap.style.display = 'inline-flex';
+      const runningCount = this.jobs.filter(j => j.status === 'running').length;
+      const readyCount = this.jobs.filter(j => j.status === 'ready').length;
+      const errorCount = this.jobs.filter(j => j.status === 'error').length;
+
+      btn.classList.remove('running', 'ready', 'error');
+      if (runningCount > 0) {
+        btn.classList.add('running');
+        badge.textContent = `${runningCount} AI Running…`;
+      } else if (readyCount > 0) {
+        btn.classList.add('ready');
+        badge.textContent = `${readyCount} AI Ready`;
+      } else if (errorCount > 0) {
+        btn.classList.add('error');
+        badge.textContent = `${errorCount} AI Failed`;
+      }
+
+      if (clearBtn) {
+        clearBtn.style.display = (readyCount + errorCount) > 0 ? 'inline-block' : 'none';
+      }
+
+      if (list) {
+        list.innerHTML = this.jobs.map(job => {
+          const stateLabel = job.status === 'running' ? '⏳ Waiting' : (job.status === 'ready' ? '✨ Ready' : '⚠️ Error');
+          return `
+            <button type="button" class="ai-job-item" data-job-id="${escapeHTML(job.id)}">
+              <div class="ai-job-item-main">
+                <div class="ai-job-item-title">${escapeHTML(job.title)}</div>
+                <div class="ai-job-item-sub">${escapeHTML(job.detail || '')}</div>
+              </div>
+              <span class="ai-job-state-tag ${escapeHTML(job.status)}">${stateLabel}</span>
+            </button>
+          `;
+        }).join('');
+      }
+    }
+  };
+
   const aiEngine = {
     getServerlessEndpoint() {
       const host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
@@ -4603,19 +4872,30 @@ CRITICAL RULES:
       }
 
       if (mode === 'foodie') {
+        const priceTierCfg = FOODIE_PRICE_TIERS[options.foodPricing] || FOODIE_PRICE_TIERS.all;
+        const pickedStyles = Array.isArray(options.foodStyles)
+          ? options.foodStyles.map(s => FOODIE_STYLE_OPTIONS[s]?.promptLabel).filter(Boolean)
+          : [];
+        const styleRule = pickedStyles.length > 0
+          ? `Prioritize and focus specifically on these spot types: ${pickedStyles.join(', ')}.`
+          : 'Include a well-rounded mix of local spots, brunches & cafes, famous eateries, street food, and desserts/bars.';
+
         return `You are a romantic culinary & cafe travel curator for ${coupleNames}, a loving couple departing from Taiwan.
-Create an uncategorized Foodie & Café Trail for "${trip.name}" (Location: ${trip.locationName || trip.name})—do NOT sort or split places into meal categories or buckets. Simply list standout local restaurants, cafes, bakeries, markets, dessert spots, and bars in a single curated list.
+Create an uncategorized Foodie & Café Trail for "${trip.name}" (Location: ${trip.locationName || trip.name})—do NOT sort or split places into meal categories or buckets. Simply list standout places in a single curated list.
 Best Seasons: ${seasonsList}.
+PRICING PREFERENCE: ${priceTierCfg.promptRule}
+SPOT STYLE FOCUS: ${styleRule}
 
 Return ONLY a valid JSON object matching this exact schema:
 {
   "mode": "foodie",
-  "summary": "2-3 vivid sentences in Traditional Chinese describing the kinds of food, signature local flavors, and dining culture you'll find in ${trip.name}.",
+  "summary": "2-3 vivid sentences in Traditional Chinese describing the kinds of food, signature local flavors, and dining culture matching the chosen pricing & spot preferences in ${trip.name}.",
   "items": [
     {
       "name": "Specific real restaurant, cafe, market, or street-food spot",
       "area": "District / Neighborhood tag",
       "foodType": "Short description of the kind of food served there in Traditional Chinese (e.g. 炭火直烤和牛漢堡排與洋食、手沖精品咖啡與可頌、現撈海鮮丼與炙燒壽司)",
+      "priceTier": "$ | $$ | $$$",
       "mustOrder": "Specific signature dish or drink to order",
       "note": "1-sentence flavor, seating vibe, or timing/reservation tip in Traditional Chinese"
     }
@@ -4624,8 +4904,8 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 
 CRITICAL RULES:
-1. Provide 8 to 12 diverse, authentic local spots directly in the flat 'items' array (do NOT group into categories).
-2. Include a concise description of the kind of food you'd find at each spot in 'foodType' and a specific signature item in 'mustOrder'.
+1. Provide 8 to 12 diverse, authentic local spots matching the PRICING PREFERENCE and SPOT STYLE FOCUS directly in the flat 'items' array (do NOT group into categories).
+2. Include a concise description of the food in 'foodType', budget level in 'priceTier' ($/$$/$$$), and a specific signature item in 'mustOrder'.
 3. Output all prose in natural Traditional Chinese (繁體中文).`;
       }
 
@@ -4800,7 +5080,7 @@ CRITICAL RULES:
 4. NEVER use generic filler clichés like "度過美好的一天" or "留下甜蜜的回憶". Make every day specific, sensory, and romantic.`;
     },
 
-    normalizeItinerarySpec(spec, mode, { targetDays, pace, modelName } = {}) {
+    normalizeItinerarySpec(spec, mode, { targetDays, pace, modelName, foodPricing, foodStyles } = {}) {
       if (!spec || typeof spec !== 'object') return null;
       const resolvedMode = ITINERARY_MODES[mode] ? mode : 'daily';
       spec.mode = resolvedMode;
@@ -4835,6 +5115,13 @@ CRITICAL RULES:
       }
 
       if (['foodie', 'photo', 'daytrips', 'stays', 'budget'].includes(resolvedMode)) {
+        if (resolvedMode === 'foodie') {
+          if (FOODIE_PRICE_TIERS[foodPricing]) spec.foodPricing = foodPricing;
+          if (Array.isArray(foodStyles)) {
+            const cleanStyles = foodStyles.filter(s => FOODIE_STYLE_OPTIONS[s]);
+            if (cleanStyles.length > 0) spec.foodStyles = cleanStyles;
+          }
+        }
         if (Array.isArray(spec.items) && spec.items.length > 0) {
           return spec;
         }
@@ -4862,6 +5149,8 @@ CRITICAL RULES:
       const mode = ITINERARY_MODES[options.mode] ? options.mode : 'daily';
       const targetDays = parseInt(options.targetDays, 10) || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
       const pace = options.pace || 'relaxed';
+      const foodPricing = FOODIE_PRICE_TIERS[options.foodPricing] ? options.foodPricing : 'all';
+      const foodStyles = Array.isArray(options.foodStyles) ? options.foodStyles.filter(s => FOODIE_STYLE_OPTIONS[s]) : [];
       const coupleNames = getCoupleNames();
 
       // 1. Direct Google Gemini API call
@@ -4869,11 +5158,11 @@ CRITICAL RULES:
       if (!directKey) {
         this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
       } else {
-        const itineraryPrompt = this.buildItineraryPrompt(trip, { mode, targetDays, pace, coupleNames });
+        const itineraryPrompt = this.buildItineraryPrompt(trip, { mode, targetDays, pace, foodPricing, foodStyles, coupleNames });
         const directSpec = await this.callGeminiDirect(itineraryPrompt);
         const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
         const activeModel = localStorage.getItem(modelProp) || 'gemini-3.5-flash-lite';
-        const normalizedDirect = this.normalizeItinerarySpec(directSpec, mode, { targetDays, pace, modelName: activeModel });
+        const normalizedDirect = this.normalizeItinerarySpec(directSpec, mode, { targetDays, pace, foodPricing, foodStyles, modelName: activeModel });
         if (normalizedDirect) {
           return normalizedDirect;
         }
@@ -4893,6 +5182,8 @@ CRITICAL RULES:
             seasons: trip.seasons || [],
             targetDays,
             pace,
+            foodPricing,
+            foodStyles,
             coupleNames,
             geminiKey: directKey
           })
@@ -4901,7 +5192,7 @@ CRITICAL RULES:
           const srvData = await srvResp.json();
           if (srvData && srvData.success && srvData.spec) {
             srvData.spec._source = srvData.source || 'Firebase Cloud Function (Gemini)';
-            const normalizedSrv = this.normalizeItinerarySpec(srvData.spec, mode, { targetDays, pace });
+            const normalizedSrv = this.normalizeItinerarySpec(srvData.spec, mode, { targetDays, pace, foodPricing, foodStyles });
             if (normalizedSrv) return normalizedSrv;
           }
         }
@@ -4983,26 +5274,74 @@ CRITICAL RULES:
   // =========================================================================
   let activeItineraryTripId = null;
   let activeItineraryMode = 'daily';
-  let pickedItineraryModes = new Set(['daily']);
   let viewAllSavedItinerary = false;
+  let selectedFoodPrice = 'all';
+  let selectedFoodStyles = new Set();
+
+  function syncFoodieOptionsFromTrip(trip) {
+    const foodiePlan = trip ? getItineraryPlan(trip.itinerary, 'foodie') : null;
+    selectedFoodPrice = (foodiePlan && FOODIE_PRICE_TIERS[foodiePlan.foodPricing]) ? foodiePlan.foodPricing : 'all';
+    selectedFoodStyles = new Set(
+      (foodiePlan && Array.isArray(foodiePlan.foodStyles))
+        ? foodiePlan.foodStyles.filter(s => FOODIE_STYLE_OPTIONS[s])
+        : []
+    );
+  }
+
+  function renderFoodieSuboptionsUI() {
+    const priceContainer = document.getElementById('itinFoodPriceChips');
+    if (priceContainer) {
+      priceContainer.innerHTML = Object.values(FOODIE_PRICE_TIERS).map(tier => {
+        const isActive = selectedFoodPrice === tier.id;
+        return `<button type="button" class="itin-subchip${isActive ? ' active' : ''}" data-food-price="${tier.id}" role="radio" aria-checked="${isActive ? 'true' : 'false'}">${escapeHTML(tier.label)}</button>`;
+      }).join('');
+    }
+    const styleContainer = document.getElementById('itinFoodStyleChips');
+    if (styleContainer) {
+      styleContainer.innerHTML = Object.values(FOODIE_STYLE_OPTIONS).map(opt => {
+        const isPicked = selectedFoodStyles.has(opt.id);
+        return `
+          <button type="button" class="itin-subchip${isPicked ? ' picked' : ''}" data-food-style="${opt.id}" role="checkbox" aria-checked="${isPicked ? 'true' : 'false'}">
+            <span class="itin-pick-check">${isPicked ? '✓' : ''}</span>
+            <span>${escapeHTML(opt.label)}</span>
+          </button>
+        `;
+      }).join('');
+    }
+  }
+
+  function setFoodPriceOption(priceId) {
+    if (!FOODIE_PRICE_TIERS[priceId]) return;
+    selectedFoodPrice = priceId;
+    renderFoodieSuboptionsUI();
+    sfx.tap();
+  }
+
+  function toggleFoodStyleOption(styleId) {
+    if (!FOODIE_STYLE_OPTIONS[styleId]) return;
+    if (selectedFoodStyles.has(styleId)) {
+      selectedFoodStyles.delete(styleId);
+    } else {
+      selectedFoodStyles.add(styleId);
+    }
+    renderFoodieSuboptionsUI();
+    sfx.tap();
+  }
 
   function renderItineraryModePicker(trip) {
     const container = document.getElementById('itinModeTabs');
     if (!container) return;
     const itin = trip ? trip.itinerary : null;
     container.innerHTML = Object.values(ITINERARY_MODES).map(m => {
-      const isPicked = pickedItineraryModes.has(m.id);
       const isActive = !viewAllSavedItinerary && activeItineraryMode === m.id;
       const hasPlan = Boolean(getItineraryPlan(itin, m.id));
       const classes = [
         'itin-mode-tab',
         isActive ? 'active' : '',
-        isPicked ? 'picked' : '',
         hasPlan ? 'has-plan' : ''
       ].filter(Boolean).join(' ');
       return `
         <button type="button" class="${classes}" data-mode="${m.id}" role="tab" aria-selected="${isActive ? 'true' : 'false'}" title="${escapeHTML(m.hint)}">
-          <span class="itin-pick-check" data-pick-toggle="${m.id}" role="checkbox" aria-checked="${isPicked ? 'true' : 'false'}" title="Pick/unpick for generation">${isPicked ? '✓' : ''}</span>
           <span>${escapeHTML(m.label)}</span>
         </button>
       `;
@@ -5029,20 +5368,21 @@ CRITICAL RULES:
       }
     }
 
-    const showDailyCtrls = (!viewAllSavedItinerary && mode === 'daily') || pickedItineraryModes.has('daily');
+    const showDailyCtrls = !viewAllSavedItinerary && mode === 'daily';
     document.querySelectorAll('.itin-daily-only').forEach(el => {
       el.style.display = showDailyCtrls ? 'flex' : 'none';
     });
 
+    const foodieCtrls = document.getElementById('itinFoodieControls');
+    if (foodieCtrls) {
+      const showFoodie = !viewAllSavedItinerary && mode === 'foodie';
+      foodieCtrls.style.display = showFoodie ? 'flex' : 'none';
+      if (showFoodie) renderFoodieSuboptionsUI();
+    }
+
     const hintEl = document.getElementById('itinModeHint');
     if (hintEl) {
-      if (pickedItineraryModes.size > 1) {
-        const pickedLabels = Array.from(pickedItineraryModes)
-          .filter(m => ITINERARY_MODES[m])
-          .map(m => ITINERARY_MODES[m].badge);
-        hintEl.textContent = `Picked ${pickedLabels.length} options: ${pickedLabels.join(', ')}`;
-        hintEl.style.display = 'block';
-      } else if (viewAllSavedItinerary) {
+      if (viewAllSavedItinerary) {
         hintEl.textContent = `Viewing all ${savedModes.length} saved planning options together.`;
         hintEl.style.display = 'block';
       } else if (mode !== 'daily') {
@@ -5055,18 +5395,10 @@ CRITICAL RULES:
 
     const genTextEl = document.getElementById('btnItinGenText');
     if (genTextEl) {
-      if (pickedItineraryModes.size > 1) {
-        genTextEl.textContent = `✨ Generate ${pickedItineraryModes.size} Picked`;
-      } else {
-        const targetMode = pickedItineraryModes.size === 1 ? Array.from(pickedItineraryModes)[0] : mode;
-        const targetCfg = ITINERARY_MODES[targetMode] || modeCfg;
-        const hasPlanForTarget = Boolean(getItineraryPlan(itin, targetMode));
-        if (targetMode !== mode && !viewAllSavedItinerary) {
-          genTextEl.textContent = hasPlanForTarget ? `✨ Regenerate ${targetCfg.badge}` : `✨ Generate ${targetCfg.badge}`;
-        } else {
-          genTextEl.textContent = hasPlanForTarget ? '✨ Regenerate' : '✨ Generate Plan';
-        }
-      }
+      const hasPlanForTarget = Boolean(getItineraryPlan(itin, mode));
+      genTextEl.textContent = hasPlanForTarget
+        ? (mode === 'daily' ? '✨ Regenerate' : `✨ Regenerate ${modeCfg.badge}`)
+        : (mode === 'daily' ? '✨ Generate Plan' : `✨ Generate ${modeCfg.badge}`);
     }
   }
 
@@ -5083,25 +5415,6 @@ CRITICAL RULES:
       trip.updatedAt = Date.now();
       saveData();
     }
-  }
-
-  function toggleItineraryModePick(mode) {
-    if (!ITINERARY_MODES[mode]) return;
-    if (pickedItineraryModes.has(mode)) {
-      pickedItineraryModes.delete(mode);
-    } else {
-      pickedItineraryModes.add(mode);
-    }
-    const trip = state.trips.find(t => t.id === activeItineraryTripId);
-    updateItineraryToolbarForMode(trip);
-    sfx.tap();
-  }
-
-  function setItineraryPickedModes(modesArray) {
-    pickedItineraryModes = new Set((modesArray || []).filter(m => ITINERARY_MODES[m]));
-    const trip = state.trips.find(t => t.id === activeItineraryTripId);
-    updateItineraryToolbarForMode(trip);
-    sfx.tap();
   }
 
   function toggleViewAllSavedItinerary() {
@@ -5136,6 +5449,38 @@ CRITICAL RULES:
     sfx.tap();
   }
 
+  function renderTripTableItineraryButton(trip) {
+    const isGenerating = typeof aiJobTracker !== 'undefined' && !!aiJobTracker.getActiveTripJob(trip.id);
+    const hasSaved = hasItineraryContent(trip.itinerary);
+    const title = isGenerating
+      ? 'AI is currently generating itinerary...'
+      : (hasSaved ? 'View Saved AI Itinerary' : 'Plan AI Itinerary');
+    const icon = isGenerating ? '⏳' : (hasSaved ? '✨' : '🧭');
+    return `<button class="btn-itinerary-table${isGenerating ? ' is-generating' : ''}" data-id="${escapeHTML(trip.id)}" title="${title}">${icon}</button>`;
+  }
+
+  function renderItineraryLoadingHtml(heading, desc) {
+    return `
+      <div class="itin-loading-state">
+        <div class="ai-pulse-orb" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); animation: pulseOrb 1.5s infinite; margin-bottom: 6px;"></div>
+        <h4 style="color:#fff; font-size:1.05rem; margin:0;">${heading}</h4>
+        <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">${escapeHTML(desc || '')}</p>
+        <div class="itin-shimmer-box" style="margin-top: 14px;"></div>
+        <div class="itin-shimmer-box" style="height: 80px; opacity: 0.7;"></div>
+        <div class="itin-shimmer-box" style="height: 80px; opacity: 0.5;"></div>
+      </div>
+    `;
+  }
+
+  function setItineraryGenerateButtonState(isGenerating) {
+    const btn = document.getElementById('btnGenerateItinerary');
+    const textSpan = document.getElementById('btnItinGenText');
+    const spinnerSpan = document.getElementById('btnItinGenSpinner');
+    if (btn) btn.disabled = !!isGenerating;
+    if (textSpan) textSpan.style.display = isGenerating ? 'none' : 'inline';
+    if (spinnerSpan) spinnerSpan.style.display = isGenerating ? 'inline-block' : 'none';
+  }
+
   function openItineraryModal(tripId) {
     const trip = state.trips.find(t => t.id === tripId) || state.selectedTrip;
     if (!trip) {
@@ -5160,7 +5505,7 @@ CRITICAL RULES:
 
     activeItineraryMode = getActiveItineraryMode(trip.itinerary);
     viewAllSavedItinerary = false;
-    pickedItineraryModes = new Set([activeItineraryMode]);
+    syncFoodieOptionsFromTrip(trip);
 
     const modal = document.getElementById('tripItineraryModal');
     if (!modal) return;
@@ -5206,7 +5551,23 @@ CRITICAL RULES:
     }
 
     updateItineraryToolbarForMode(trip);
-    renderItineraryContent(trip.itinerary, trip);
+
+    if (typeof aiJobTracker !== 'undefined') {
+      aiJobTracker.dismissByTarget('itinerary', trip.id);
+    }
+    const activeJob = typeof aiJobTracker !== 'undefined' ? aiJobTracker.getActiveTripJob(trip.id) : null;
+    setItineraryGenerateButtonState(!!activeJob);
+    if (activeJob) {
+      const container = document.getElementById('itinContentContainer');
+      if (container) {
+        container.innerHTML = renderItineraryLoadingHtml(
+          activeJob.loadingHeading || `Curating Guide for ${escapeHTML(trip.name)}...`,
+          activeJob.loadingDesc || 'AI is crafting your travel guide...'
+        );
+      }
+    } else {
+      renderItineraryContent(trip.itinerary, trip);
+    }
 
     modal.style.display = 'flex';
     sfx.whoosh();
@@ -5239,18 +5600,17 @@ CRITICAL RULES:
       : item.howToGo
         ? `🚆 ${item.howToGo}`
         : foodType;
+    const priceTag = item.priceTier || '';
     const highlightTag = item.mustOrder
       ? `必點: ${item.mustOrder}`
-      : item.priceTier
-        ? item.priceTier
-        : item.timing
-          ? `⏰ ${item.timing}`
-          : '';
+      : item.timing
+        ? `⏰ ${item.timing}`
+        : '';
     return `
       <div class="itin-group-item">
         ${item.area ? `<span class="itin-item-area-pill">${escapeHTML(item.area)}</span>` : ''}
         <div class="itin-group-item-body">
-          <span class="itin-group-item-name">${escapeHTML(item.name || '')}</span>${extraInfo ? `<span class="itin-food-kind-badge">${escapeHTML(extraInfo)}</span>` : ''}${highlightTag ? `<span class="itin-must-order-badge">${escapeHTML(highlightTag)}</span>` : ''}${item.note ? `<div style="margin-top:2px;">${escapeHTML(item.note)}</div>` : ''}
+          <span class="itin-group-item-name">${escapeHTML(item.name || '')}</span>${extraInfo ? `<span class="itin-food-kind-badge">${escapeHTML(extraInfo)}</span>` : ''}${priceTag ? `<span class="itin-price-tier-badge">${escapeHTML(priceTag)}</span>` : ''}${highlightTag ? `<span class="itin-must-order-badge">${escapeHTML(highlightTag)}</span>` : ''}${item.note ? `<div style="margin-top:2px;">${escapeHTML(item.note)}</div>` : ''}
         </div>
       </div>
     `;
@@ -5303,9 +5663,25 @@ CRITICAL RULES:
         <span class="pill pill-purple">📍 Flexible Area Guide</span>
       `;
     } else if (Array.isArray(plan.items) && plan.items.length > 0) {
+      let foodFilterPills = '';
+      if (mode === 'foodie') {
+        const fpCfg = FOODIE_PRICE_TIERS[plan.foodPricing];
+        if (fpCfg && plan.foodPricing !== 'all') {
+          foodFilterPills += `<span class="pill" style="background:rgba(16,185,129,0.16); color:#86efac;">${escapeHTML(fpCfg.badge)}</span>`;
+        }
+        if (Array.isArray(plan.foodStyles) && plan.foodStyles.length > 0) {
+          const styleLabels = plan.foodStyles
+            .map(s => FOODIE_STYLE_OPTIONS[s]?.badge)
+            .filter(Boolean);
+          if (styleLabels.length > 0) {
+            foodFilterPills += `<span class="pill" style="background:rgba(99,102,241,0.16); color:#c7d2fe;">${escapeHTML(styleLabels.join(' · '))}</span>`;
+          }
+        }
+      }
       summaryPillsHtml = `
         <span class="pill pill-cyan">${plan.items.length} Picks</span>
         <span class="pill pill-purple">${escapeHTML(modeCfg.label)}</span>
+        ${foodFilterPills}
       `;
     } else {
       const groupCount = Array.isArray(plan.groups) ? plan.groups.length : 0;
@@ -5492,10 +5868,7 @@ CRITICAL RULES:
       `;
       const emptyBtn = document.getElementById('btnEmptyStateGen');
       if (emptyBtn) {
-        emptyBtn.addEventListener('click', () => {
-          if (pickedItineraryModes.size === 0) pickedItineraryModes.add(mode);
-          generateActiveItinerary();
-        });
+        emptyBtn.addEventListener('click', generateActiveItinerary);
       }
       if (statusTag) statusTag.textContent = `✦ ${modeCfg.badge}${savedSuffix}`;
       if (timeText) timeText.textContent = '';
@@ -5536,99 +5909,121 @@ CRITICAL RULES:
       return;
     }
 
-    const fallbackMode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
-    const modesToRun = Object.keys(ITINERARY_MODES).filter(m => pickedItineraryModes.has(m));
-    if (modesToRun.length === 0) {
-      modesToRun.push(fallbackMode);
+    if (aiJobTracker.getActiveTripJob(trip.id)) {
+      showToast(`⏳ Already generating itinerary for ${trip.name}...`);
+      return;
     }
+
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
 
     const daysSelect = document.getElementById('itinDaysSelect');
     const paceSelect = document.getElementById('itinPaceSelect');
     const targetDays = daysSelect ? parseInt(daysSelect.value, 10) : 5;
     const pace = paceSelect ? paceSelect.value : 'relaxed';
+    const genOptions = { mode, targetDays, pace };
+    if (mode === 'foodie') {
+      genOptions.foodPricing = selectedFoodPrice;
+      genOptions.foodStyles = Array.from(selectedFoodStyles);
+    }
 
-    const btn = document.getElementById('btnGenerateItinerary');
-    const textSpan = document.getElementById('btnItinGenText');
-    const spinnerSpan = document.getElementById('btnItinGenSpinner');
-    const container = document.getElementById('itinContentContainer');
+    const loadingHeading = mode === 'daily'
+      ? `Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...`
+      : `${escapeHTML(modeCfg.loadingTitle)} for ${escapeHTML(trip.name)}...`;
 
-    if (btn) btn.disabled = true;
-    if (textSpan) textSpan.style.display = 'none';
-    if (spinnerSpan) spinnerSpan.style.display = 'inline-block';
+    const tripId = trip.id;
+    const tripName = trip.name;
+    const isViewingTrip = () => activeItineraryTripId === tripId;
+    const resolveLiveTrip = () => state.trips.find(t => t.id === tripId) || trip;
+    const jobId = aiJobTracker.start({
+      kind: 'itinerary',
+      targetId: tripId,
+      title: `Itinerary · ${tripName}`,
+      detail: `Generating ${modeCfg.badge}...`,
+      loadingHeading,
+      loadingDesc: modeCfg.loadingDesc
+    });
 
-    const succeeded = [];
-    const failed = [];
+    setItineraryGenerateButtonState(true);
+    if (isViewingTrip()) {
+      const container = document.getElementById('itinContentContainer');
+      if (container) {
+        container.innerHTML = renderItineraryLoadingHtml(loadingHeading, modeCfg.loadingDesc);
+      }
+    }
+    if (state.selectedTrip && state.selectedTrip.id === tripId) {
+      renderSelectedTripCard();
+    }
+    renderTripsTable();
+
+    let settled = false;
 
     try {
-      for (let i = 0; i < modesToRun.length; i++) {
-        const mode = modesToRun[i];
-        const modeCfg = ITINERARY_MODES[mode];
-        const progressPrefix = modesToRun.length > 1 ? `(${i + 1}/${modesToRun.length}) ` : '';
-        const loadingHeading = mode === 'daily'
-          ? `${progressPrefix}Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...`
-          : `${progressPrefix}${escapeHTML(modeCfg.loadingTitle)} for ${escapeHTML(trip.name)}...`;
+      const generatedSpec = await aiEngine.generateItinerary(trip, genOptions);
+      if (!generatedSpec || !hasSinglePlanContent(generatedSpec, mode)) {
+        throw new Error(`Invalid response for ${modeCfg.badge}.`);
+      }
+      const targetTrip = resolveLiveTrip();
+      storeItineraryPlanForMode(targetTrip, mode, generatedSpec);
+      targetTrip.updatedAt = Date.now();
+      saveData();
 
-        if (container) {
-          container.innerHTML = `
-            <div class="itin-loading-state">
-              <div class="ai-pulse-orb" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); animation: pulseOrb 1.5s infinite; margin-bottom: 6px;"></div>
-              <h4 style="color:#fff; font-size:1.05rem; margin:0;">${loadingHeading}</h4>
-              <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">${escapeHTML(modeCfg.loadingDesc)}</p>
-              <div class="itin-shimmer-box" style="margin-top: 14px;"></div>
-              <div class="itin-shimmer-box" style="height: 80px; opacity: 0.7;"></div>
-              <div class="itin-shimmer-box" style="height: 80px; opacity: 0.5;"></div>
-            </div>
-          `;
-        }
+      const modalEl = document.getElementById('tripItineraryModal');
+      const isActivelyViewing = isViewingTrip() && modalEl && modalEl.style.display !== 'none';
 
-        try {
-          const generatedSpec = await aiEngine.generateItinerary(trip, { mode, targetDays, pace });
-          if (!generatedSpec || !hasSinglePlanContent(generatedSpec, mode)) {
-            throw new Error(`Invalid response for ${modeCfg.badge}.`);
-          }
-          storeItineraryPlanForMode(trip, mode, generatedSpec);
-          trip.updatedAt = Date.now();
-          saveData();
-          succeeded.push(mode);
-          updateItineraryToolbarForMode(trip);
-        } catch (modeErr) {
-          console.error(`Failed to generate ${mode}:`, modeErr);
-          failed.push({ mode, error: modeErr.message || 'AI request failed' });
-        }
+      if (isActivelyViewing) aiJobTracker.dismiss(jobId);
+      else aiJobTracker.finish(jobId, `${modeCfg.badge} ready`);
+      settled = true;
+
+      if (isViewingTrip()) {
+        viewAllSavedItinerary = false;
+        activeItineraryMode = mode;
+        updateItineraryToolbarForMode(targetTrip);
+        renderItineraryContent(targetTrip.itinerary, targetTrip);
       }
 
-      if (succeeded.length > 0) {
-        if (succeeded.length > 1) {
-          viewAllSavedItinerary = true;
-          activeItineraryMode = succeeded[0];
-        } else {
-          viewAllSavedItinerary = false;
-          activeItineraryMode = succeeded[0];
-        }
-      }
-
-      renderItineraryContent(trip.itinerary, trip);
-      if (state.selectedTrip && state.selectedTrip.id === trip.id) {
+      if (state.selectedTrip && state.selectedTrip.id === tripId) {
+        state.selectedTrip = targetTrip;
         renderSelectedTripCard();
       }
       renderTripsTable();
 
-      if (succeeded.length > 0 && failed.length === 0) {
-        const msg = succeeded.length > 1
-          ? `✨ Generated & saved ${succeeded.length} options for ${trip.name}!`
-          : `✨ Generated ${succeeded[0] === 'daily' ? `${targetDays}-Day itinerary` : `${ITINERARY_MODES[succeeded[0]].badge} guide`} for ${trip.name}!`;
-        showToast(msg);
-        sfx.sparkle();
-        confetti.burst();
-      } else if (succeeded.length > 0) {
-        showToast(`⚠️ Saved ${succeeded.length} option(s), ${failed.length} failed (${failed[0].error}).`);
-      } else {
-        showToast(`❌ Itinerary Error: ${failed[0]?.error || 'AI request failed'}`);
+      const readyHint = isActivelyViewing ? '' : ' (Click ✨ AI Ready above to open)';
+      const msg = `✨ Generated ${mode === 'daily' ? `${targetDays}-Day itinerary` : `${modeCfg.badge} guide`} for ${targetTrip.name}!${readyHint}`;
+      showToast(msg);
+      sfx.sparkle();
+      confetti.burst();
+    } catch (err) {
+      console.error(`Failed to generate ${mode}:`, err);
+      const modalEl = document.getElementById('tripItineraryModal');
+      const isActivelyViewing = isViewingTrip() && modalEl && modalEl.style.display !== 'none';
+      if (isActivelyViewing) aiJobTracker.dismiss(jobId);
+      else aiJobTracker.fail(jobId, err.message || 'AI request failed');
+      settled = true;
+
+      const targetTrip = resolveLiveTrip();
+      if (isViewingTrip()) {
+        updateItineraryToolbarForMode(targetTrip);
+        renderItineraryContent(targetTrip.itinerary, targetTrip);
       }
+      if (state.selectedTrip && state.selectedTrip.id === tripId) {
+        state.selectedTrip = targetTrip;
+        renderSelectedTripCard();
+      }
+      renderTripsTable();
+      showToast(`❌ Itinerary Error: ${err.message || 'AI request failed'}`);
     } finally {
-      if (btn) btn.disabled = false;
-      if (textSpan) textSpan.style.display = 'inline';
-      if (spinnerSpan) spinnerSpan.style.display = 'none';
+      if (!settled) {
+        aiJobTracker.dismiss(jobId);
+        if (state.selectedTrip && state.selectedTrip.id === tripId) {
+          state.selectedTrip = resolveLiveTrip();
+          renderSelectedTripCard();
+        }
+        renderTripsTable();
+      }
+      if (isViewingTrip()) {
+        setItineraryGenerateButtonState(false);
+      }
     }
   }
 
@@ -5697,9 +6092,10 @@ CRITICAL RULES:
       plan.items.forEach(item => {
         const foodType = item.foodType || item.kind || '';
         const extraTag = item.bestLight ? `（${item.bestLight}）` : item.howToGo ? `（${item.howToGo}）` : foodType ? `（${foodType}）` : '';
-        const highlightTag = item.mustOrder ? `（必點：${item.mustOrder}）` : item.priceTier ? `（${item.priceTier}）` : item.timing ? `（${item.timing}）` : '';
+        const priceTag = item.priceTier ? `（${item.priceTier}）` : '';
+        const highlightTag = item.mustOrder ? `（必點：${item.mustOrder}）` : item.timing ? `（${item.timing}）` : '';
         const areaTag = item.area ? `[${item.area}] ` : '';
-        text += `• ${areaTag}${item.name || ''}${extraTag}${highlightTag}${item.note ? ` — ${item.note}` : ''}\n`;
+        text += `• ${areaTag}${item.name || ''}${extraTag}${priceTag}${highlightTag}${item.note ? ` — ${item.note}` : ''}\n`;
       });
     } else {
       text += `\n${modeCfg.icon} ${modeCfg.badge}精選：\n`;
@@ -5792,6 +6188,42 @@ CRITICAL RULES:
       localStorage.setItem('app_sound_enabled', sfx.enabled ? '1' : '0');
       document.getElementById('soundIcon').textContent = sfx.enabled ? '🔊' : '🔇';
       if (sfx.enabled) sfx.pop(540);
+    });
+
+    // Global AI Request Status Pill & Queue Popover
+    const btnAiStatus = document.getElementById('btnAiStatus');
+    const aiJobsPopover = document.getElementById('aiJobsPopover');
+    const aiJobsList = document.getElementById('aiJobsList');
+    const btnAiClearDone = document.getElementById('btnAiClearDone');
+    const aiStatusWrap = document.getElementById('aiStatusWrap');
+
+    if (btnAiStatus && aiJobsPopover) {
+      btnAiStatus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = aiJobsPopover.style.display === 'block';
+        aiJobsPopover.style.display = isOpen ? 'none' : 'block';
+        btnAiStatus.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      });
+    }
+    if (aiJobsList) {
+      aiJobsList.addEventListener('click', (e) => {
+        const item = e.target.closest('.ai-job-item');
+        if (!item) return;
+        const jobId = item.dataset.jobId;
+        if (jobId) aiJobTracker.openJobTarget(jobId);
+      });
+    }
+    if (btnAiClearDone) {
+      btnAiClearDone.addEventListener('click', (e) => {
+        e.stopPropagation();
+        aiJobTracker.clearCompleted();
+      });
+    }
+    document.addEventListener('click', (e) => {
+      if (aiJobsPopover && aiJobsPopover.style.display === 'block' && aiStatusWrap && !aiStatusWrap.contains(e.target)) {
+        aiJobsPopover.style.display = 'none';
+        if (btnAiStatus) btnAiStatus.setAttribute('aria-expanded', 'false');
+      }
     });
 
     // Randomizers
@@ -6047,6 +6479,12 @@ CRITICAL RULES:
       if (btnAiTrip) btnAiTrip.disabled = true;
       if (hint) hint.textContent = '⏳ AI is analyzing location, calculating GPS coordinates and specs...';
 
+      const jobId = aiJobTracker.start({
+        kind: 'trip',
+        title: `AI Trip · ${query}`,
+        detail: 'Analyzing location & GPS specs...'
+      });
+
       try {
         const spec = await aiEngine.generateTrip(query);
         applyTripAiSpec(spec);
@@ -6056,9 +6494,11 @@ CRITICAL RULES:
         if (hint) {
           hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Specs generated for "${escapeHTML(spec.name)}"! Click "Save Destination" below.`;
         }
+        aiJobTracker.settleForModal(jobId, 'addTripModal', true, `Ready: ${spec.name}`);
         showToast(`AI analyzed <strong>${escapeHTML(spec.name)}</strong> via ${escapeHTML(sourceLabel)}! 📍`);
       } catch (err) {
         console.error('AI trip generation error:', err);
+        aiJobTracker.settleForModal(jobId, 'addTripModal', false, err.message || 'AI service error');
         if (hint) hint.textContent = `⚠️ ${err.message || 'AI service error. Please try again.'}`;
         showToast(`AI Error: ${err.message}`, 'error');
         sfx.errorNudge();
@@ -6100,6 +6540,12 @@ CRITICAL RULES:
         if (spinner) spinner.style.display = 'inline';
         btnMoreDesc.disabled = true;
 
+        const jobId = aiJobTracker.start({
+          kind: 'trip-desc',
+          title: `AI Description · ${placeName}`,
+          detail: 'Writing alternate description flavor...'
+        });
+
         try {
           const currentDesc = descEl ? descEl.value.trim() : '';
           const newDesc = await aiEngine.generateAlternateTripDescription(placeName, currentDesc);
@@ -6110,9 +6556,13 @@ CRITICAL RULES:
             descEl.classList.add('ai-field-highlight');
             showToast('New description flavor generated! ✨');
             sfx.sparkle();
+            aiJobTracker.settleForModal(jobId, 'addTripModal', true, 'Alternate description ready');
+          } else {
+            aiJobTracker.dismiss(jobId);
           }
         } catch (err) {
           console.error('Alternate description error:', err);
+          aiJobTracker.settleForModal(jobId, 'addTripModal', false, err.message || 'Could not generate alternate flavor');
           showToast(err.message || 'Could not generate alternate flavor.', 'error');
           sfx.errorNudge();
         } finally {
@@ -6143,6 +6593,12 @@ CRITICAL RULES:
       if (btnAiAct) btnAiAct.disabled = true;
       if (hint) hint.textContent = '⏳ AI is classifying date occasion, budget tier, and setting...';
 
+      const jobId = aiJobTracker.start({
+        kind: 'activity',
+        title: `AI Date Idea · ${query}`,
+        detail: 'Classifying occasion, budget & setting...'
+      });
+
       try {
         const spec = await aiEngine.generateActivity(query);
         applyActivityAiSpec(spec);
@@ -6151,9 +6607,11 @@ CRITICAL RULES:
         if (hint) {
           hint.innerHTML = `✨ <strong>[${escapeHTML(sourceLabel)}]</strong> Categorized "${escapeHTML(spec.title)}"! Click "Save Date Idea" below.`;
         }
+        aiJobTracker.settleForModal(jobId, 'addActivityModal', true, `Ready: ${spec.title}`);
         showToast(`Categorized "<strong>${escapeHTML(spec.title)}</strong>" via ${escapeHTML(sourceLabel)}! ✨`);
       } catch (err) {
         console.error('AI activity generation error:', err);
+        aiJobTracker.settleForModal(jobId, 'addActivityModal', false, err.message || 'AI service error');
         if (hint) hint.textContent = `⚠️ ${err.message || 'AI service error. Please try again.'}`;
         showToast(`AI Error: ${err.message}`, 'error');
         sfx.errorNudge();
@@ -6519,12 +6977,6 @@ CRITICAL RULES:
     const itinModeTabs = document.getElementById('itinModeTabs');
     if (itinModeTabs) {
       itinModeTabs.addEventListener('click', (e) => {
-        const pickCheck = e.target.closest('[data-pick-toggle]');
-        if (pickCheck && pickCheck.dataset.pickToggle) {
-          e.stopPropagation();
-          toggleItineraryModePick(pickCheck.dataset.pickToggle);
-          return;
-        }
         const tab = e.target.closest('.itin-mode-tab');
         if (tab && tab.dataset.mode) {
           switchItineraryMode(tab.dataset.mode);
@@ -6532,28 +6984,28 @@ CRITICAL RULES:
       });
     }
 
-    const btnItinViewAll = document.getElementById('btnItinViewAll');
-    if (btnItinViewAll) btnItinViewAll.addEventListener('click', toggleViewAllSavedItinerary);
-
-    const btnItinPickMissing = document.getElementById('btnItinPickMissing');
-    if (btnItinPickMissing) {
-      btnItinPickMissing.addEventListener('click', () => {
-        const trip = state.trips.find(t => t.id === activeItineraryTripId);
-        const itin = trip ? trip.itinerary : null;
-        const missing = Object.keys(ITINERARY_MODES).filter(m => !getItineraryPlan(itin, m));
-        setItineraryPickedModes(missing);
+    const itinFoodPriceChips = document.getElementById('itinFoodPriceChips');
+    if (itinFoodPriceChips) {
+      itinFoodPriceChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-food-price]');
+        if (chip && chip.dataset.foodPrice) {
+          setFoodPriceOption(chip.dataset.foodPrice);
+        }
       });
     }
 
-    const btnItinPickAll = document.getElementById('btnItinPickAll');
-    if (btnItinPickAll) {
-      btnItinPickAll.addEventListener('click', () => setItineraryPickedModes(Object.keys(ITINERARY_MODES)));
+    const itinFoodStyleChips = document.getElementById('itinFoodStyleChips');
+    if (itinFoodStyleChips) {
+      itinFoodStyleChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-food-style]');
+        if (chip && chip.dataset.foodStyle) {
+          toggleFoodStyleOption(chip.dataset.foodStyle);
+        }
+      });
     }
 
-    const btnItinPickNone = document.getElementById('btnItinPickNone');
-    if (btnItinPickNone) {
-      btnItinPickNone.addEventListener('click', () => setItineraryPickedModes([]));
-    }
+    const btnItinViewAll = document.getElementById('btnItinViewAll');
+    if (btnItinViewAll) btnItinViewAll.addEventListener('click', toggleViewAllSavedItinerary);
 
     const itinDaysSelect = document.getElementById('itinDaysSelect');
     if (itinDaysSelect) {
