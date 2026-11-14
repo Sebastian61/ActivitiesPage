@@ -504,6 +504,7 @@ Analyze the destination "${query}" and return ONLY a valid JSON object matching 
 {
   "name": "Bespoke, poetic trip title in Traditional Chinese with relevant emojis (HIGH CREATIVE LEEWAY - NEVER use generic endings like '浪漫之旅' or '[Place]之旅')",
   "locationName": "City/Region, Country (in English with flag emoji if appropriate)",
+  "scope": "international",
   "lat": 35.0116,
   "lng": 135.7681,
   "minDays": 5,
@@ -514,6 +515,7 @@ Analyze the destination "${query}" and return ONLY a valid JSON object matching 
   "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
   "description": "2 to 3 vivid, deeply evocative sentences in Traditional Chinese (80-140 chars) tailored uniquely to ${query}. Capture tangible local sights, authentic scents/flavors, and genuine shared couples micro-moments. NEVER use generic clichés."
 }
+(Note: Set "scope" to "domestic" for destinations within Taiwan & its offshore islands, or "international" for all destinations outside Taiwan.)
 
 REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
 1. DURATION (minDays & maxDays):
@@ -605,8 +607,14 @@ environment must be one of: "indoor", "outdoor", "any".`;
             const text = parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0].text;
             if (text) {
               const spec = JSON.parse(text);
-              if (type === 'trip' && spec.seasons) {
-                spec.seasons = normalizeSeasons(spec.seasons);
+              if (type === 'trip') {
+                if (spec.seasons) spec.seasons = normalizeSeasons(spec.seasons);
+                if (spec.scope !== 'domestic' && spec.scope !== 'international') {
+                  const textCheck = `${spec.locationName || ''} ${spec.name || ''}`;
+                  spec.scope = /\btaiwan\b|🇹🇼|台灣|臺灣|台北|臺北|新北|基隆|桃園|新竹|苗栗|台中|臺中|彰化|南投|雲林|嘉義|台南|臺南|高雄|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|馬祖|綠島|蘭嶼|小琉球|日月潭|阿里山|清境|太魯閣|墾丁|九份|杉林溪/i.test(textCheck)
+                    ? 'domestic'
+                    : 'international';
+                }
               } else if (type === 'itinerary' && spec) {
                 const allowedModes = ['daily', 'area', 'vibe', 'foodie', 'highlights', 'photo', 'daytrips', 'stays', 'budget'];
                 const reqMode = (req.body && req.body.mode) || spec.mode || 'daily';

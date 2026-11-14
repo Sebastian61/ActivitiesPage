@@ -7,16 +7,19 @@
   <title>Date &amp; Trip Planner</title>
   <meta name="description" content="A minimalist dark-themed date activity randomizer and multi-day trip decider with interactive line graphics map.">
   
-  <!-- Fonts -->
+  <!-- Fonts & CDN Preconnects -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://services.arcgisonline.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   
   <!-- Leaflet Map CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- App Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.6.6">
+  <link rel="stylesheet" href="styles.css?v=2.6.8">
 
   <!-- Anti-Tamper & Strict Data Isolation Styles -->
   <style id="antiTamperStyle">
@@ -101,7 +104,7 @@
           Unlock Space &rarr;
         </button>
       </form>
-      <div class="lock-footer-version">v2.6.6</div>
+      <div class="lock-footer-version">v2.6.8</div>
     </div>
   </div>
 
@@ -198,6 +201,15 @@
         </div>
 
         <div class="filter-group">
+          <label class="filter-label">Travel Scope</label>
+          <div class="chip-select" id="tripScopeSelect">
+            <button class="chip active" data-scope="all" title="All Destinations">Any</button>
+            <button class="chip" data-scope="domestic" title="Domestic Travel (Taiwan)">🇹🇼 Domestic</button>
+            <button class="chip" data-scope="international" title="International Travel (Abroad)">✈️ International</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
           <label class="filter-label">Budget Tier</label>
           <div class="chip-select" id="tripBudgetSelect">
             <button class="chip active" data-budget="all" title="All Budget Tiers">Any</button>
@@ -279,6 +291,7 @@
                 <div class="st-badge-row">
                   <span class="st-meta-badge" id="stLocationName">Hokkaido, Japan</span>
                   <span class="st-status-pill wishlist" id="stStatusPill">✦ Wishlist</span>
+                  <span class="st-scope-pill international" id="stScopePill">✈️ International</span>
                 </div>
                 <h3 class="st-title" id="stTitle">北海道粉雪與小樽運河夢幻之旅</h3>
               </div>
@@ -469,7 +482,7 @@
       <span class="footer-dot">•</span>
       <span class="footer-subtitle">Date &amp; Getaway Hub</span>
       <span class="footer-dot">•</span>
-      <span class="footer-version" id="appVersion">v2.6.6</span>
+      <span class="footer-version" id="appVersion">v2.6.8</span>
     </div>
   </footer>
 
@@ -531,6 +544,11 @@
               <option value="all">All Destinations</option>
               <option value="wishlist">Wishlist (Unvisited)</option>
               <option value="visited">Visited Memories</option>
+            </select>
+            <select class="select-box" id="tripFilterScope" style="width: auto; min-width: 145px;">
+              <option value="all">All Scopes</option>
+              <option value="domestic">🇹🇼 Domestic</option>
+              <option value="international">✈️ International</option>
             </select>
             <button class="btn btn-outline btn-sm" id="btnOpenAddTripModalManage">
               + Add Destination
@@ -625,9 +643,18 @@
           <label>Destination Name *</label>
           <input type="text" id="formTripName" required placeholder="e.g. 日月潭環湖慢活">
         </div>
-        <div class="form-group">
-          <label>Region / Country *</label>
-          <input type="text" id="formTripRegion" required placeholder="e.g. Nantou, Taiwan">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Region / Country *</label>
+            <input type="text" id="formTripRegion" required placeholder="e.g. Nantou, Taiwan">
+          </div>
+          <div class="form-group">
+            <label>Travel Scope</label>
+            <select id="formTripScope">
+              <option value="domestic">🇹🇼 Domestic (Taiwan)</option>
+              <option value="international" selected>✈️ International (Abroad)</option>
+            </select>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -1062,16 +1089,16 @@
   <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
   <!-- Firebase Compat for Real-time Cloud Sync & Auth -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="firebaseConfig.js?v=2.6.6"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script defer src="firebaseConfig.js?v=2.6.8"></script>
 
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   
   <!-- Seed Data & Application Script -->
-  <script src="defaultData.js?v=2.6.6"></script>
-  <script src="app.js?v=2.6.6"></script>
+  <script defer src="defaultData.js?v=2.6.8"></script>
+  <script defer src="app.js?v=2.6.8"></script>
 </body>
 </html>

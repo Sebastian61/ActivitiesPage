@@ -500,12 +500,14 @@
       this.particles = [];
       this.animationFrame = null;
       this.resize();
-      window.addEventListener('resize', () => this.resize());
+      window.addEventListener('resize', () => this.resize(), { passive: true });
     }
 
     resize() {
-      this.canvas.width = window.innerWidth;
-      this.canvas.height = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (this.canvas.width !== w) this.canvas.width = w;
+      if (this.canvas.height !== h) this.canvas.height = h;
     }
 
     burst(x = window.innerWidth / 2, y = window.innerHeight / 2) {
@@ -564,6 +566,17 @@
   }
 
   const confetti = new Confetti('confettiCanvas');
+
+  function debounce(fn, delay = 140) {
+    let timer = null;
+    return function (...args) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        fn.apply(this, args);
+      }, delay);
+    };
+  }
 
   // =========================================================================
   // Toast Notification System
@@ -1349,9 +1362,10 @@
     selectedActivity: null,
     dateMode: 'single', // 'single' | 'eliminator'
     eliminatorCandidates: [],
-    // Trip filters (Dual range days slider + Multiple choice budget/season)
+    // Trip filters (Dual range days slider + Travel scope + Multiple choice budget/season)
     tripFilters: {
       daysRange: { min: 1, max: 15, isAll: true },
+      scope: 'all', // 'all' | 'domestic' | 'international'
       budget: ['all'],
       season: ['all'],
       unvisitedOnly: true
@@ -1381,6 +1395,25 @@
     try {
       localStorage.setItem(STORAGE_KEYS.DELETED_ACTIVITIES, JSON.stringify(Array.from(state.deletedActivityIds).slice(-300)));
     } catch (e) { }
+  }
+
+  const TAIWAN_DOMESTIC_RE = /\btaiwan\b|🇹🇼|台灣|臺灣|台北|臺北|新北|基隆|桃園|新竹|苗栗|台中|臺中|彰化|南投|雲林|嘉義|台南|臺南|高雄|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|馬祖|綠島|蘭嶼|小琉球|日月潭|阿里山|清境|太魯閣|墾丁|九份|杉林溪|chiayi|alishan|tainan|taichung|taitung|hualien|nantou|kinmen|penghu|matsu|xiaoliuqiu|taipei|keelung|kaohsiung|pingtung|yilan|kenting|taroko/i;
+
+  function getTripScope(trip) {
+    if (!trip || typeof trip !== 'object') return 'international';
+    if (trip.scope === 'domestic' || trip.scope === 'international') {
+      return trip.scope;
+    }
+    const textCheck = `${trip.locationName || ''} ${trip.name || ''}`;
+    if (TAIWAN_DOMESTIC_RE.test(textCheck)) {
+      return 'domestic';
+    }
+    const lat = Number(trip.lat);
+    const lng = Number(trip.lng);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= 21.8 && lat <= 25.4 && lng >= 119.3 && lng <= 122.1) {
+      return 'domestic';
+    }
+    return 'international';
   }
 
   const ITINERARY_MODES = {
@@ -2502,7 +2535,18 @@
     document.getElementById('statCompletedCount').textContent = actDone;
     document.getElementById('statRemainingCount').textContent = actRemaining;
     document.getElementById('statTripsCount').textContent = tripTotal;
-    document.getElementById('tripCountBadge').textContent = `${tripTotal} Saved Spots`;
+    const activeScope = state.tripFilters ? state.tripFilters.scope : 'all';
+    const scopeTrips = activeScope === 'all' ? state.trips : state.trips.filter(t => getTripScope(t) === activeScope);
+    const tripCountBadge = document.getElementById('tripCountBadge');
+    if (tripCountBadge) {
+      if (activeScope === 'domestic') {
+        tripCountBadge.textContent = `${scopeTrips.length} Domestic`;
+      } else if (activeScope === 'international') {
+        tripCountBadge.textContent = `${scopeTrips.length} International`;
+      } else {
+        tripCountBadge.textContent = `${tripTotal} Saved Spots`;
+      }
+    }
 
     const elWishlist = document.getElementById('legendWishlistCount');
     if (elWishlist) elWishlist.textContent = tripWishlist;
@@ -2566,15 +2610,31 @@
     renderMapMarkers();
   }
 
+  function updateSelectedMapPinClasses(selectedId) {
+    const mapEl = document.getElementById('tripMap');
+    if (!mapEl) return;
+    mapEl.querySelectorAll('.custom-pin.selected').forEach(el => {
+      el.classList.remove('selected');
+    });
+    if (selectedId) {
+      mapEl.querySelectorAll(`.custom-pin[data-id="${CSS.escape ? CSS.escape(selectedId) : selectedId}"]`).forEach(el => {
+        el.classList.add('selected');
+      });
+    }
+  }
+
   function renderMapMarkers() {
     if (!mapInstance || !markersLayer) return;
     markersLayer.clearLayers();
 
-    // World offsets for seamless infinite horizontal wrapping across adjacent copies of the world
-    const worldOffsets = [-720, -360, 0, 360, 720];
+    // World offsets for seamless horizontal wrapping across adjacent copies of the world
+    const worldOffsets = [-360, 0, 360];
+    const activeScope = state.tripFilters ? state.tripFilters.scope : 'all';
+    const activeScope = state.tripFilters ? state.tripFilters.scope : 'all';
 
     state.trips.forEach((trip) => {
       if (trip.lat == null || isNaN(trip.lat) || trip.lng == null || isNaN(trip.lng)) return;
+      if (activeScope && activeScope !== 'all' && getTripScope(trip) !== activeScope) return;
 
       const baseLng = L.latLng(trip.lat, trip.lng).wrap().lng;
       const isVisited = !!trip.visited;
@@ -2617,14 +2677,14 @@
   function selectTrip(trip, targetLng) {
     state.selectedTrip = trip;
     renderSelectedTripCard();
-    renderMapMarkers();
+    updateSelectedMapPinClasses(trip ? trip.id : null);
 
     if (mapInstance && trip.lat != null && !isNaN(trip.lat) && trip.lng != null && !isNaN(trip.lng)) {
       let flyLng = targetLng;
       if (flyLng == null) {
         const centerLng = mapInstance.getCenter().lng;
         const baseLng = L.latLng(trip.lat, trip.lng).wrap().lng;
-        const candidates = [-720, -360, 0, 360, 720].map(offset => baseLng + offset);
+        const candidates = [-360, 0, 360].map(offset => baseLng + offset);
         candidates.sort((a, b) => Math.abs(a - centerLng) - Math.abs(b - centerLng));
         flyLng = candidates[0];
       }
@@ -2653,6 +2713,13 @@
     if (statusPill) {
       statusPill.className = `st-status-pill ${isVisited ? 'visited' : 'wishlist'}`;
       statusPill.textContent = isVisited ? '✓ Visited Memory' : '✦ On Wishlist';
+    }
+
+    const scopePill = document.getElementById('stScopePill');
+    if (scopePill) {
+      const tripScope = getTripScope(trip);
+      scopePill.className = `st-scope-pill ${tripScope}`;
+      scopePill.textContent = tripScope === 'domestic' ? '🇹🇼 Domestic' : '✈️ International';
     }
 
     document.getElementById('stTitle').textContent = trip.name;
@@ -2779,12 +2846,15 @@
   function decideTrip() {
     if (isSpinningTrip) return;
 
-    const { daysRange, budget, season, unvisitedOnly } = state.tripFilters;
+    const { daysRange, scope, budget, season, unvisitedOnly } = state.tripFilters;
     const budgetList = Array.isArray(budget) ? budget : [budget];
     const seasonList = Array.isArray(season) ? season : [season];
 
     let pool = state.trips.filter((t) => {
       if (unvisitedOnly && t.visited) return false;
+
+      // Travel scope filter (Domestic vs International)
+      if (scope && scope !== 'all' && getTripScope(t) !== scope) return false;
 
       // Budget filter (Multiple choice)
       if (!budgetList.includes('all')) {
@@ -3147,6 +3217,8 @@
     if (subActivities) subActivities.style.display = target === 'activitiesList' ? 'block' : 'none';
     if (subTrips) subTrips.style.display = target === 'tripsList' ? 'block' : 'none';
     if (subImport) subImport.style.display = target === 'importExport' ? 'block' : 'none';
+    if (target === 'activitiesList') renderActivitiesTable();
+    else if (target === 'tripsList') renderTripsTable();
   }
 
   function openManageModal(subtab = 'activitiesList', filterStatus = null) {
@@ -3157,8 +3229,6 @@
       tab.classList.toggle('active', tab.dataset.view === 'manage');
     });
 
-    switchManageSubtab(subtab);
-
     if (subtab === 'tripsList') {
       const tripFilter = document.getElementById('tripFilterStatus');
       if (tripFilter && filterStatus) tripFilter.value = filterStatus;
@@ -3166,8 +3236,7 @@
       if (searchInput) searchInput.value = '';
     }
 
-    renderActivitiesTable();
-    renderTripsTable();
+    switchManageSubtab(subtab);
   }
 
   function closeManageModal() {
@@ -3183,6 +3252,8 @@
   }
 
   function renderActivitiesTable() {
+    const manageModal = document.getElementById('manageModal');
+    if (manageModal && manageModal.style.display === 'none') return;
     const tbody = document.getElementById('activityTableBody');
     if (!tbody) return;
     const searchVal = document.getElementById('actSearchInput').value.trim().toLowerCase();
@@ -3220,14 +3291,18 @@
   }
 
   function renderTripsTable() {
+    const manageModal = document.getElementById('manageModal');
+    if (manageModal && manageModal.style.display === 'none') return;
     const tbody = document.getElementById('tripTableBody');
     if (!tbody) return;
     const searchVal = document.getElementById('tripSearchInput').value.trim().toLowerCase();
     const statusVal = document.getElementById('tripFilterStatus') ? document.getElementById('tripFilterStatus').value : 'all';
+    const scopeVal = document.getElementById('tripFilterScope') ? document.getElementById('tripFilterScope').value : 'all';
 
     const filtered = state.trips.filter(t => {
       if (statusVal === 'wishlist' && t.visited) return false;
       if (statusVal === 'visited' && !t.visited) return false;
+      if (scopeVal && scopeVal !== 'all' && getTripScope(t) !== scopeVal) return false;
       if (searchVal && !t.name.toLowerCase().includes(searchVal) && !(t.locationName || '').toLowerCase().includes(searchVal)) return false;
       return true;
     });
@@ -3250,6 +3325,7 @@
       const seasonsText = normS.includes('all')
         ? '✨ All Seasons'
         : normS.map(s => seasonEmojiMap[s] || s).join(', ');
+      const tripScope = getTripScope(t);
       return `
         <tr class="${isVisited ? 'tr-visited' : 'tr-wishlist'}">
           <td style="text-align:center;">
@@ -3263,7 +3339,12 @@
               <strong>${escapeHTML(t.name)}</strong>
             </div>
           </td>
-          <td>${escapeHTML(t.locationName || '-')}</td>
+          <td>
+            <div class="table-budget-wrap">
+              <span>${escapeHTML(t.locationName || '-')}</span>
+              <span class="table-scope-pill ${tripScope}">${tripScope === 'domestic' ? '🇹🇼 Domestic' : '✈️ Intl'}</span>
+            </div>
+          </td>
           <td>${t.minDays}-${t.maxDays}d</td>
           <td>
             <div class="table-budget-wrap">
@@ -3387,6 +3468,16 @@
     if (budgetSelect) budgetSelect.value = '$$';
     const costEstimateInput = document.getElementById('formTripCostEstimate');
     if (costEstimateInput) costEstimateInput.value = '';
+    const scopeSelect = document.getElementById('formTripScope');
+    if (scopeSelect) {
+      if (lat !== undefined && lng !== undefined) {
+        scopeSelect.value = getTripScope({ lat, lng });
+      } else if (state.tripFilters && (state.tripFilters.scope === 'domestic' || state.tripFilters.scope === 'international')) {
+        scopeSelect.value = state.tripFilters.scope;
+      } else {
+        scopeSelect.value = 'international';
+      }
+    }
 
     setModalTripSeasons(['all']);
 
@@ -3418,6 +3509,8 @@
 
     document.getElementById('formTripName').value = trip.name || '';
     document.getElementById('formTripRegion').value = trip.locationName || '';
+    const scopeSelect = document.getElementById('formTripScope');
+    if (scopeSelect) scopeSelect.value = getTripScope(trip);
     document.getElementById('formTripMinDays').value = trip.minDays || 2;
     document.getElementById('formTripMaxDays').value = trip.maxDays || 3;
     document.getElementById('formTripLat').value = (trip.lat !== undefined && trip.lat !== null) ? Number(trip.lat).toFixed(4) : '';
@@ -3866,6 +3959,10 @@
 
     const budget = document.getElementById('formTripBudget').value;
     const costEstimate = document.getElementById('formTripCostEstimate') ? document.getElementById('formTripCostEstimate').value.trim() : '';
+    const scopeEl = document.getElementById('formTripScope');
+    const scope = (scopeEl && (scopeEl.value === 'domestic' || scopeEl.value === 'international'))
+      ? scopeEl.value
+      : getTripScope({ name, locationName, lat, lng });
     const seasons = getModalTripSeasons();
 
     const desc = document.getElementById('formTripDesc').value.trim();
@@ -3879,6 +3976,7 @@
       if (trip) {
         trip.name = name;
         trip.locationName = locationName;
+        trip.scope = scope;
         trip.lat = lat;
         trip.lng = lng;
         trip.minDays = minDays;
@@ -3915,6 +4013,7 @@
       id: 'trip_' + (Date.now()),
       name,
       locationName,
+      scope,
       lat,
       lng,
       minDays,
@@ -4260,6 +4359,7 @@ Analyze the destination "${query}" and return ONLY a valid JSON object matching 
 {
   "name": "Bespoke, poetic trip title in Traditional Chinese with relevant emojis (HIGH CREATIVE LEEWAY - NEVER use generic endings like '浪漫之旅' or '[Place]之旅')",
   "locationName": "City/Region, Country (in English with flag emoji if appropriate)",
+  "scope": "international",
   "lat": 35.0116,
   "lng": 135.7681,
   "minDays": 5,
@@ -4270,6 +4370,7 @@ Analyze the destination "${query}" and return ONLY a valid JSON object matching 
   "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
   "description": "2 to 3 vivid, deeply evocative sentences in Traditional Chinese (80-140 chars) tailored uniquely to ${query}. Capture tangible local sights, authentic scents/flavors, and genuine shared couples micro-moments. NEVER use generic clichés."
 }
+(Set "scope" to "domestic" for destinations within Taiwan & its offshore islands, or "international" for all destinations outside Taiwan.)
 
 REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
 1. DURATION (minDays & maxDays):
@@ -4308,6 +4409,7 @@ REALISTIC CALIBRATION GUIDELINES (Departing from Taiwan):
         const directSpec = await this.callGeminiDirect(tripPrompt);
         if (directSpec && directSpec.name && directSpec.lat != null && directSpec.lng != null) {
           if (directSpec.seasons) directSpec.seasons = normalizeSeasons(directSpec.seasons);
+          directSpec.scope = getTripScope(directSpec);
           return directSpec;
         }
       }
@@ -4813,6 +4915,7 @@ CRITICAL RULES:
   function applyTripAiSpec(spec) {
     const nameEl = document.getElementById('formTripName');
     const regionEl = document.getElementById('formTripRegion');
+    const scopeEl = document.getElementById('formTripScope');
     const minEl = document.getElementById('formTripMinDays');
     const maxEl = document.getElementById('formTripMaxDays');
     const latEl = document.getElementById('formTripLat');
@@ -4824,6 +4927,7 @@ CRITICAL RULES:
 
     if (nameEl) { nameEl.value = spec.name; nameEl.classList.add('ai-field-highlight'); }
     if (regionEl) { regionEl.value = spec.locationName; regionEl.classList.add('ai-field-highlight'); }
+    if (scopeEl) { scopeEl.value = getTripScope(spec); scopeEl.classList.add('ai-field-highlight'); }
     if (minEl) { minEl.value = spec.minDays; minEl.classList.add('ai-field-highlight'); }
     if (maxEl) { maxEl.value = spec.maxDays; maxEl.classList.add('ai-field-highlight'); }
     if (latEl && !isNaN(spec.lat)) { latEl.value = Number(spec.lat).toFixed(4); latEl.classList.add('ai-field-highlight'); }
@@ -5845,6 +5949,32 @@ CRITICAL RULES:
     // Initialize dual slider fill & state
     updateDualDaysSliderUI();
 
+    // Trip Scope (Any / Domestic / International)
+    const scopeSelectContainer = document.getElementById('tripScopeSelect');
+    if (scopeSelectContainer) {
+      const scopeChips = scopeSelectContainer.querySelectorAll('.chip');
+      scopeChips.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = btn.dataset.scope || 'all';
+          const nextScope = (val !== 'all' && state.tripFilters.scope === val) ? 'all' : val;
+          state.tripFilters.scope = nextScope;
+          scopeChips.forEach(b => b.classList.toggle('active', b.dataset.scope === nextScope));
+          renderMapMarkers();
+          updateCounters();
+          if (mapInstance) {
+            if (nextScope === 'domestic') {
+              mapInstance.flyTo([23.7, 120.9], 7, { duration: 0.9 });
+            } else if (nextScope === 'international') {
+              mapInstance.flyTo([26.0, 110.0], 2, { duration: 0.9 });
+            } else {
+              mapInstance.flyTo([26.0, 120.0], 4, { duration: 0.9 });
+            }
+          }
+          sfx.tap();
+        });
+      });
+    }
+
     // Trip Filter Chips (Multiple Choice)
     wireMultiSelectChips('tripBudgetSelect', 'budget', state.tripFilters, 'budget');
     wireMultiSelectChips('tripSeasonSelect', 'season', state.tripFilters, 'season');
@@ -6437,12 +6567,12 @@ CRITICAL RULES:
       });
     }
 
-    // Window resize handler for Leaflet map recalibration
-    window.addEventListener('resize', () => {
+    // Window resize handler for Leaflet map recalibration (debounced)
+    window.addEventListener('resize', debounce(() => {
       if (mapInstance) {
         mapInstance.invalidateSize();
       }
-    });
+    }, 150), { passive: true });
 
     const btnPush = document.getElementById('btnManualPushCloud');
     if (btnPush) btnPush.addEventListener('click', () => cloudSync.forcePush());
@@ -6464,13 +6594,17 @@ CRITICAL RULES:
     document.getElementById('formActivity').addEventListener('submit', handleAddActivity);
     document.getElementById('formTrip').addEventListener('submit', handleAddTrip);
 
-    // Table Search & Filter
-    document.getElementById('actSearchInput').addEventListener('input', renderActivitiesTable);
+    // Table Search & Filter (debounced search inputs avoid rebuilding 170+ rows per keystroke)
+    document.getElementById('actSearchInput').addEventListener('input', debounce(renderActivitiesTable, 140));
     document.getElementById('actFilterStatus').addEventListener('change', renderActivitiesTable);
-    document.getElementById('tripSearchInput').addEventListener('input', renderTripsTable);
+    document.getElementById('tripSearchInput').addEventListener('input', debounce(renderTripsTable, 140));
     const tripFilterStatus = document.getElementById('tripFilterStatus');
     if (tripFilterStatus) {
       tripFilterStatus.addEventListener('change', renderTripsTable);
+    }
+    const tripFilterScope = document.getElementById('tripFilterScope');
+    if (tripFilterScope) {
+      tripFilterScope.addEventListener('change', renderTripsTable);
     }
 
     // Clickable Destination Badges -> Open Destinations List
