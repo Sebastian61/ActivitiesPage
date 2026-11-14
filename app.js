@@ -4894,6 +4894,7 @@ Return ONLY a valid JSON object matching this exact schema:
     {
       "name": "Specific real restaurant, cafe, market, or street-food spot",
       "area": "District / Neighborhood tag",
+      "spotType": "Short 2-4 char style tag in Traditional Chinese (e.g. 在地名店, 咖啡早午餐, 排隊老店, 街頭小吃, 甜點酒吧, 約會餐酒)",
       "foodType": "Short description of the kind of food served there in Traditional Chinese (e.g. 炭火直烤和牛漢堡排與洋食、手沖精品咖啡與可頌、現撈海鮮丼與炙燒壽司)",
       "priceTier": "$ | $$ | $$$",
       "mustOrder": "Specific signature dish or drink to order",
@@ -4905,7 +4906,7 @@ Return ONLY a valid JSON object matching this exact schema:
 
 CRITICAL RULES:
 1. Provide 8 to 12 diverse, authentic local spots matching the PRICING PREFERENCE and SPOT STYLE FOCUS directly in the flat 'items' array (do NOT group into categories).
-2. Include a concise description of the food in 'foodType', budget level in 'priceTier' ($/$$/$$$), and a specific signature item in 'mustOrder'.
+2. Include a concise style badge in 'spotType', kind of food in 'foodType', budget level in 'priceTier' ($/$$/$$$), and a specific signature item in 'mustOrder'.
 3. Output all prose in natural Traditional Chinese (繁體中文).`;
       }
 
@@ -5278,6 +5279,31 @@ CRITICAL RULES:
   let selectedFoodPrice = 'all';
   let selectedFoodStyles = new Set();
 
+  function formatFoodieFilterSummary(foodPricing, foodStyles) {
+    const priceCfg = FOODIE_PRICE_TIERS[foodPricing] || FOODIE_PRICE_TIERS.all;
+    const styleLabels = Array.isArray(foodStyles)
+      ? foodStyles.map(s => FOODIE_STYLE_OPTIONS[s]?.badge).filter(Boolean)
+      : [];
+    const parts = [priceCfg.badge];
+    if (styleLabels.length > 0) parts.push(styleLabels.join(', '));
+    return parts.join(' · ');
+  }
+
+  function hasFoodieFilterChanges(trip) {
+    const foodiePlan = trip ? getItineraryPlan(trip.itinerary, 'foodie') : null;
+    if (!foodiePlan) return false;
+    const savedPrice = FOODIE_PRICE_TIERS[foodiePlan.foodPricing] ? foodiePlan.foodPricing : 'all';
+    const savedStyles = new Set(
+      Array.isArray(foodiePlan.foodStyles) ? foodiePlan.foodStyles.filter(s => FOODIE_STYLE_OPTIONS[s]) : []
+    );
+    if (selectedFoodPrice !== savedPrice) return true;
+    if (selectedFoodStyles.size !== savedStyles.size) return true;
+    for (const s of selectedFoodStyles) {
+      if (!savedStyles.has(s)) return true;
+    }
+    return false;
+  }
+
   function syncFoodieOptionsFromTrip(trip) {
     const foodiePlan = trip ? getItineraryPlan(trip.itinerary, 'foodie') : null;
     selectedFoodPrice = (foodiePlan && FOODIE_PRICE_TIERS[foodiePlan.foodPricing]) ? foodiePlan.foodPricing : 'all';
@@ -5310,10 +5336,21 @@ CRITICAL RULES:
     }
   }
 
+  function refreshActiveFoodieToolbar() {
+    const trip = activeItineraryTripId ? state.trips.find(t => t.id === activeItineraryTripId) : null;
+    updateItineraryToolbarForMode(trip);
+    if (activeItineraryMode === 'foodie') {
+      const emptyBtn = document.getElementById('btnEmptyStateGen');
+      if (emptyBtn) {
+        emptyBtn.textContent = getEmptyStateButtonLabel('foodie');
+      }
+    }
+  }
+
   function setFoodPriceOption(priceId) {
     if (!FOODIE_PRICE_TIERS[priceId]) return;
     selectedFoodPrice = priceId;
-    renderFoodieSuboptionsUI();
+    refreshActiveFoodieToolbar();
     sfx.tap();
   }
 
@@ -5324,7 +5361,14 @@ CRITICAL RULES:
     } else {
       selectedFoodStyles.add(styleId);
     }
-    renderFoodieSuboptionsUI();
+    refreshActiveFoodieToolbar();
+    sfx.tap();
+  }
+
+  function resetFoodieFilters() {
+    selectedFoodPrice = 'all';
+    selectedFoodStyles.clear();
+    refreshActiveFoodieToolbar();
     sfx.tap();
   }
 
@@ -5369,36 +5413,73 @@ CRITICAL RULES:
     }
 
     const showDailyCtrls = !viewAllSavedItinerary && mode === 'daily';
+    const isFoodieMode = !viewAllSavedItinerary && mode === 'foodie';
+    const toolbarEl = document.getElementById('itinToolbar');
+    if (toolbarEl) {
+      toolbarEl.classList.toggle('is-foodie', isFoodieMode);
+    }
+
     document.querySelectorAll('.itin-daily-only').forEach(el => {
       el.style.display = showDailyCtrls ? 'flex' : 'none';
     });
 
     const foodieCtrls = document.getElementById('itinFoodieControls');
     if (foodieCtrls) {
-      const showFoodie = !viewAllSavedItinerary && mode === 'foodie';
-      foodieCtrls.style.display = showFoodie ? 'flex' : 'none';
-      if (showFoodie) renderFoodieSuboptionsUI();
+      foodieCtrls.style.display = isFoodieMode ? 'flex' : 'none';
+      if (isFoodieMode) renderFoodieSuboptionsUI();
     }
 
+    const hintRow = document.getElementById('itinModeHintRow');
     const hintEl = document.getElementById('itinModeHint');
+    const resetFoodBtn = document.getElementById('btnResetFoodieFilters');
     if (hintEl) {
       if (viewAllSavedItinerary) {
         hintEl.textContent = `Viewing all ${savedModes.length} saved planning options together.`;
-        hintEl.style.display = 'block';
+        if (hintRow) hintRow.style.display = 'flex';
       } else if (mode !== 'daily') {
         hintEl.textContent = modeCfg.hint;
-        hintEl.style.display = 'block';
+        if (hintRow) hintRow.style.display = 'flex';
       } else {
-        hintEl.style.display = 'none';
+        if (hintRow) hintRow.style.display = 'none';
       }
+    }
+    if (resetFoodBtn) {
+      const hasCustomFoodFilters = isFoodieMode && (selectedFoodPrice !== 'all' || selectedFoodStyles.size > 0);
+      resetFoodBtn.style.display = hasCustomFoodFilters ? 'inline-flex' : 'none';
+    }
+
+    const hasPlanForTarget = Boolean(getItineraryPlan(itin, mode));
+    const foodieFiltersChanged = isFoodieMode && hasPlanForTarget && hasFoodieFilterChanges(trip);
+    const filterSummary = isFoodieMode ? formatFoodieFilterSummary(selectedFoodPrice, Array.from(selectedFoodStyles)) : '';
+
+    const foodieStatusHint = document.getElementById('itinFoodieStatusHint');
+    if (foodieStatusHint) {
+      if (isFoodieMode) {
+        foodieStatusHint.style.display = 'inline-flex';
+        foodieStatusHint.classList.toggle('is-dirty', foodieFiltersChanged);
+        foodieStatusHint.textContent = foodieFiltersChanged
+          ? `🔄 Filters updated (${filterSummary}) — click Regenerate to apply`
+          : `Curates with: ${filterSummary}`;
+      } else {
+        foodieStatusHint.style.display = 'none';
+        foodieStatusHint.classList.remove('is-dirty');
+      }
+    }
+
+    const genBtn = document.getElementById('btnGenerateItinerary');
+    if (genBtn) {
+      genBtn.classList.toggle('has-pending-changes', foodieFiltersChanged);
     }
 
     const genTextEl = document.getElementById('btnItinGenText');
     if (genTextEl) {
-      const hasPlanForTarget = Boolean(getItineraryPlan(itin, mode));
-      genTextEl.textContent = hasPlanForTarget
-        ? (mode === 'daily' ? '✨ Regenerate' : `✨ Regenerate ${modeCfg.badge}`)
-        : (mode === 'daily' ? '✨ Generate Plan' : `✨ Generate ${modeCfg.badge}`);
+      if (foodieFiltersChanged) {
+        genTextEl.textContent = '✨ Apply & Regenerate';
+      } else {
+        genTextEl.textContent = hasPlanForTarget
+          ? (mode === 'daily' ? '✨ Regenerate' : `✨ Regenerate ${modeCfg.badge}`)
+          : (mode === 'daily' ? '✨ Generate Plan' : `✨ Generate ${modeCfg.badge}`);
+      }
     }
   }
 
@@ -5616,12 +5697,49 @@ CRITICAL RULES:
     `;
   }
 
+  function getPriceTierBadgeClass(priceTier) {
+    const trimmed = String(priceTier || '').trim();
+    if (trimmed === '$') return 'tier-budget';
+    if (trimmed === '$$') return 'tier-mid';
+    if (trimmed.startsWith('$$$')) return 'tier-splurge';
+    return '';
+  }
+
+  function renderFoodieSpotCardHtml(item, trip) {
+    const foodType = item.foodType || item.kind || '';
+    const spotType = item.spotType || '';
+    const priceTag = item.priceTier || '';
+    const priceClass = getPriceTierBadgeClass(priceTag);
+    const destContext = trip ? (trip.locationName || trip.name || '') : '';
+    const mapQuery = [item.name, item.area, destContext].filter(Boolean).join(' ');
+    const mapUrl = mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : '';
+    return `
+      <div class="itin-food-card">
+        <div class="itin-food-card-head">
+          <div class="itin-food-card-badges">
+            ${item.area ? `<span class="itin-item-area-pill">${escapeHTML(item.area)}</span>` : ''}
+            ${spotType ? `<span class="itin-spot-style-badge">${escapeHTML(spotType)}</span>` : ''}
+          </div>
+          <div class="itin-food-card-actions">
+            ${priceTag ? `<span class="itin-price-tier-badge ${priceClass}">${escapeHTML(priceTag)}</span>` : ''}
+            ${mapUrl ? `<a href="${escapeHTML(mapUrl)}" target="_blank" rel="noopener noreferrer" class="itin-food-map-link" title="Search on Google Maps">🗺️ Map</a>` : ''}
+          </div>
+        </div>
+        <div class="itin-food-name">${escapeHTML(item.name || '')}</div>
+        ${foodType ? `<div class="itin-food-type">${escapeHTML(foodType)}</div>` : ''}
+        ${item.mustOrder ? `<div class="itin-food-mustorder">🍽️ 必點: ${escapeHTML(item.mustOrder)}</div>` : ''}
+        ${item.note ? `<div class="itin-food-note">${escapeHTML(item.note)}</div>` : ''}
+      </div>
+    `;
+  }
+
   function renderItineraryInfoGrid(plan, mode) {
     const hasFoods = mode === 'daily' && Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0;
     const hasTips = Boolean(plan.tips);
     if (!hasFoods && !hasTips) return '';
 
-    let html = `<div class="itin-info-grid">`;
+    const isSingleCol = !(hasFoods && hasTips);
+    let html = `<div class="itin-info-grid${isSingleCol ? ' single-col' : ''}">`;
     if (hasFoods) {
       html += `
         <div class="itin-info-card">
@@ -5644,7 +5762,7 @@ CRITICAL RULES:
     return html;
   }
 
-  function renderSinglePlanBodyHtml(plan, mode, modeCfg) {
+  function renderSinglePlanBodyHtml(plan, mode, modeCfg, trip = null) {
     let summaryPillsHtml = '';
     if (mode === 'daily') {
       const paceLabels = {
@@ -5781,13 +5899,21 @@ CRITICAL RULES:
         `;
       });
     } else if (Array.isArray(plan.items) && plan.items.length > 0) {
-      html += `
-        <div class="itin-group-card">
-          <div class="itin-group-items">
-            ${plan.items.map(item => renderGroupItemHtml(item)).join('')}
+      if (mode === 'foodie') {
+        html += `
+          <div class="itin-foodie-grid">
+            ${plan.items.map(item => renderFoodieSpotCardHtml(item, trip)).join('')}
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        html += `
+          <div class="itin-group-card">
+            <div class="itin-group-items">
+              ${plan.items.map(item => renderGroupItemHtml(item)).join('')}
+            </div>
+          </div>
+        `;
+      }
     } else {
       (plan.groups || []).forEach(group => {
         const items = Array.isArray(group.items) ? group.items : [];
@@ -5847,7 +5973,7 @@ CRITICAL RULES:
           <div class="itin-all-section-header">
             <span>${escapeHTML(cfg.label)}</span>
           </div>
-          ${renderSinglePlanBodyHtml(mPlan, m, cfg)}
+          ${renderSinglePlanBodyHtml(mPlan, m, cfg, trip)}
         `;
       }).join('');
       return;
@@ -5895,7 +6021,7 @@ CRITICAL RULES:
       if (notesInput) notesInput.value = (itinerary && itinerary.notes) || '';
     }
 
-    container.innerHTML = renderSinglePlanBodyHtml(plan, mode, modeCfg);
+    container.innerHTML = renderSinglePlanBodyHtml(plan, mode, modeCfg, trip);
   }
 
   async function generateActiveItinerary() {
@@ -5931,6 +6057,13 @@ CRITICAL RULES:
       ? `Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...`
       : `${escapeHTML(modeCfg.loadingTitle)} for ${escapeHTML(trip.name)}...`;
 
+    const foodieFilterSummary = mode === 'foodie'
+      ? formatFoodieFilterSummary(genOptions.foodPricing, genOptions.foodStyles)
+      : '';
+    const loadingDesc = foodieFilterSummary
+      ? `Curating with filters: ${foodieFilterSummary}`
+      : modeCfg.loadingDesc;
+
     const tripId = trip.id;
     const tripName = trip.name;
     const isViewingTrip = () => activeItineraryTripId === tripId;
@@ -5939,16 +6072,16 @@ CRITICAL RULES:
       kind: 'itinerary',
       targetId: tripId,
       title: `Itinerary · ${tripName}`,
-      detail: `Generating ${modeCfg.badge}...`,
+      detail: foodieFilterSummary ? `${modeCfg.badge} · ${foodieFilterSummary}` : `Generating ${modeCfg.badge}...`,
       loadingHeading,
-      loadingDesc: modeCfg.loadingDesc
+      loadingDesc
     });
 
     setItineraryGenerateButtonState(true);
     if (isViewingTrip()) {
       const container = document.getElementById('itinContentContainer');
       if (container) {
-        container.innerHTML = renderItineraryLoadingHtml(loadingHeading, modeCfg.loadingDesc);
+        container.innerHTML = renderItineraryLoadingHtml(loadingHeading, loadingDesc);
       }
     }
     if (state.selectedTrip && state.selectedTrip.id === tripId) {
@@ -5962,6 +6095,12 @@ CRITICAL RULES:
       const generatedSpec = await aiEngine.generateItinerary(trip, genOptions);
       if (!generatedSpec || !hasSinglePlanContent(generatedSpec, mode)) {
         throw new Error(`Invalid response for ${modeCfg.badge}.`);
+      }
+      if (mode === 'foodie') {
+        if (!generatedSpec.foodPricing) generatedSpec.foodPricing = genOptions.foodPricing;
+        if (!Array.isArray(generatedSpec.foodStyles) && Array.isArray(genOptions.foodStyles) && genOptions.foodStyles.length > 0) {
+          generatedSpec.foodStyles = genOptions.foodStyles;
+        }
       }
       const targetTrip = resolveLiveTrip();
       storeItineraryPlanForMode(targetTrip, mode, generatedSpec);
@@ -6091,11 +6230,12 @@ CRITICAL RULES:
       text += `\n${modeCfg.icon} ${modeCfg.badge}精選：\n`;
       plan.items.forEach(item => {
         const foodType = item.foodType || item.kind || '';
+        const spotTag = item.spotType ? `[${item.spotType}] ` : '';
         const extraTag = item.bestLight ? `（${item.bestLight}）` : item.howToGo ? `（${item.howToGo}）` : foodType ? `（${foodType}）` : '';
         const priceTag = item.priceTier ? `（${item.priceTier}）` : '';
         const highlightTag = item.mustOrder ? `（必點：${item.mustOrder}）` : item.timing ? `（${item.timing}）` : '';
         const areaTag = item.area ? `[${item.area}] ` : '';
-        text += `• ${areaTag}${item.name || ''}${extraTag}${priceTag}${highlightTag}${item.note ? ` — ${item.note}` : ''}\n`;
+        text += `• ${areaTag}${spotTag}${item.name || ''}${extraTag}${priceTag}${highlightTag}${item.note ? ` — ${item.note}` : ''}\n`;
       });
     } else {
       text += `\n${modeCfg.icon} ${modeCfg.badge}精選：\n`;
@@ -7002,6 +7142,11 @@ CRITICAL RULES:
           toggleFoodStyleOption(chip.dataset.foodStyle);
         }
       });
+    }
+
+    const btnResetFoodieFilters = document.getElementById('btnResetFoodieFilters');
+    if (btnResetFoodieFilters) {
+      btnResetFoodieFilters.addEventListener('click', resetFoodieFilters);
     }
 
     const btnItinViewAll = document.getElementById('btnItinViewAll');

@@ -389,11 +389,11 @@ Return ONLY a valid JSON object matching this exact schema:
   "mode": "foodie",
   "summary": "2-3 vivid sentences in Traditional Chinese describing the kinds of food, signature local flavors, and dining culture matching the chosen pricing & spot preferences in ${dest}.",
   "items": [
-    { "name": "Specific Spot Name", "area": "District tag", "foodType": "Short description of the kind of food served there in Traditional Chinese", "priceTier": "$ | $$ | $$$", "mustOrder": "Signature item to order", "note": "1-sentence highlight or reservation tip in Traditional Chinese" }
+    { "name": "Specific Spot Name", "area": "District tag", "spotType": "Short 2-4 char style tag in Traditional Chinese (e.g. 在地名店, 咖啡早午餐, 排隊老店, 街頭小吃, 甜點酒吧, 約會餐酒)", "foodType": "Short description of the kind of food served there in Traditional Chinese", "priceTier": "$ | $$ | $$$", "mustOrder": "Signature item to order", "note": "1-sentence highlight or reservation tip in Traditional Chinese" }
   ],
   "tips": "2-3 practical dining tips in Traditional Chinese."
 }
-CRITICAL RULES: Provide 8 to 12 diverse, real spots matching the PRICING PREFERENCE and SPOT STYLE FOCUS directly in the flat 'items' array (do NOT group into categories), each with 'foodType', 'priceTier' ($/$$/$$$), and 'mustOrder'. Output all prose in Traditional Chinese (繁體中文).`;
+CRITICAL RULES: Provide 8 to 12 diverse, real spots matching the PRICING PREFERENCE and SPOT STYLE FOCUS directly in the flat 'items' array (do NOT group into categories), each with 'spotType', 'foodType', 'priceTier' ($/$$/$$$), and 'mustOrder'. Output all prose in Traditional Chinese (繁體中文).`;
         } else if (itinMode === 'highlights') {
           prompt = `You are an insider romantic travel strategist for ${couple}, a loving couple departing from Taiwan.
 Create a high-signal "Must-Dos & Hidden Gems" cheat sheet for "${dest}" (${loc}).

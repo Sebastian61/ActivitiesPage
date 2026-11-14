@@ -4385,12 +4385,39 @@ optgroup {
   font-weight: 700;
 }
 
+.itin-mode-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
 .itin-mode-hint {
   font-size: 0.82rem;
   color: #94a3b8;
   line-height: 1.45;
   flex: 1;
-  min-width: 200px;
+}
+
+.itin-reset-filters-btn {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.itin-reset-filters-btn:hover {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(129, 140, 248, 0.55);
 }
 
 .itinerary-toolbar {
@@ -4402,6 +4429,49 @@ optgroup {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
+}
+
+.itinerary-toolbar.is-foodie {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.itinerary-toolbar.is-foodie .itin-mode-hint-row {
+  flex: none;
+  width: 100%;
+}
+
+.itin-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.itinerary-toolbar.is-foodie .itin-toolbar-actions {
+  margin-left: 0;
+  width: 100%;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.itin-foodie-status-hint {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.itin-foodie-status-hint.is-dirty {
+  color: #fcd34d;
+  font-weight: 600;
+}
+
+.btn-generate-itin.has-pending-changes {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.38), 0 4px 14px rgba(99, 102, 241, 0.32);
 }
 
 .itinerary-ctrl-group {
@@ -4759,13 +4829,144 @@ optgroup {
   margin-left: 6px;
 }
 
+.itin-foodie-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.itin-food-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  contain: layout style;
+}
+
+.itin-food-card:hover {
+  border-color: rgba(129, 140, 248, 0.32);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.itin-food-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.itin-food-card-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.itin-food-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.itin-spot-style-badge {
+  display: inline-block;
+  font-size: 0.71rem;
+  font-weight: 600;
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  padding: 2px 7px;
+  border-radius: 7px;
+}
+
+.itin-price-tier-badge.tier-budget {
+  color: #86efac;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.itin-price-tier-badge.tier-mid {
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.14);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.itin-price-tier-badge.tier-splurge {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(251, 191, 36, 0.34);
+}
+
+.itin-food-card .itin-price-tier-badge {
+  margin-left: 0;
+}
+
+.itin-food-map-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+
+.itin-food-map-link:hover {
+  color: #fff;
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.38);
+}
+
+.itin-food-name {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.35;
+}
+
+.itin-food-type {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5eead4;
+  line-height: 1.35;
+}
+
+.itin-food-mustorder {
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  padding: 5px 9px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.itin-food-note {
+  font-size: 0.81rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
 /* Foodie Trail Sub-Options (Pricing + Multi-optional Spot Types) */
 .itin-foodie-subpanel {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(15, 23, 42, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 }
@@ -4781,7 +4982,7 @@ optgroup {
   font-size: 0.77rem;
   font-weight: 700;
   color: #cbd5e1;
-  min-width: 60px;
+  min-width: 102px;
 }
 
 .itin-subopt-opt {
@@ -4836,6 +5037,10 @@ optgroup {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.itin-info-grid.single-col {
+  grid-template-columns: 1fr;
 }
 
 .itin-info-card {
@@ -4965,6 +5170,13 @@ optgroup {
   .btn-generate-itin {
     width: 100%;
     justify-content: center;
+    margin-left: 0;
+  }
+  .itin-foodie-grid {
+    grid-template-columns: 1fr;
+  }
+  .itin-toolbar-actions {
+    width: 100%;
     margin-left: 0;
   }
   .itin-info-grid {
