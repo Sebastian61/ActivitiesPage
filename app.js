@@ -4459,7 +4459,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "coupleHighlight": "A tender, specific romantic couple micro-moment in this area in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
   "tips": "2-3 practical tips for Taiwanese travelers (transit cards, area-hopping order, luggage lockers, booking advice) in Traditional Chinese."
 }
 
@@ -4492,7 +4491,6 @@ Return ONLY a valid JSON object matching this exact schema:
       ]
     }
   ],
-  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
   "tips": "2-3 practical mood/weather planning tips for Taiwanese travelers in Traditional Chinese."
 }
 
@@ -4520,7 +4518,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "note": "1-sentence flavor, seating vibe, or timing/reservation tip in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4", "Specific dish 5"],
   "tips": "2-3 practical dining tips for Taiwanese travelers (booking windows, cash vs card, peak hours, tipping) in Traditional Chinese."
 }
 
@@ -4552,7 +4549,6 @@ Return ONLY a valid JSON object matching this exact schema:
       ]
     }
   ],
-  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
   "tips": "2-3 high-value logistics & timing tips for Taiwanese travelers in Traditional Chinese."
 }
 
@@ -4579,7 +4575,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "note": "Specific framing angle, couple pose/moment, and crowd tip in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["1-2 nearby cafe/snack stops for waiting between golden hour shoots"],
   "tips": "2-3 practical photography & timing tips (tripod rules, weather backup, sunrise/sunset timing) in Traditional Chinese."
 }
 
@@ -4605,7 +4600,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "note": "Top 2-3 things to see/eat there and a sweet couple moment in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["Signature regional treats from these nearby day-trip towns"],
   "tips": "2-3 practical day-trip logistics tips (last train times, pass coverage, luggage storage) in Traditional Chinese."
 }
 
@@ -4631,7 +4625,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "note": "Pros, cons, walkability, and airport/station access in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["Late-night or breakfast specialties commonly found near these stay areas"],
   "tips": "2-3 practical accommodation tips for Taiwanese couples (early booking, room size/tax notes, luggage delivery) in Traditional Chinese."
 }
 
@@ -4657,7 +4650,6 @@ Return ONLY a valid JSON object matching this exact schema:
       "note": "Concrete price/value advice and why it's worth it (or skip it) in Traditional Chinese"
     }
   ],
-  "mustTryFoods": ["Great-value local eats or set-lunch deals worth seeking out"],
   "tips": "2-3 practical payment, tax-free shopping, cash vs card, and currency tips for Taiwanese travelers in Traditional Chinese."
 }
 
@@ -4712,7 +4704,12 @@ CRITICAL RULES:
       spec.mode = resolvedMode;
       spec.generatedAt = spec.generatedAt || Date.now();
       if (modelName) spec.model = modelName;
-      spec.mustTryFoods = spec.mustTryFoods || spec.foodMustTry || [];
+      if (resolvedMode === 'daily') {
+        spec.mustTryFoods = spec.mustTryFoods || spec.foodMustTry || [];
+      } else {
+        delete spec.mustTryFoods;
+        delete spec.foodMustTry;
+      }
       spec.tips = spec.tips || (Array.isArray(spec.packingTips) ? spec.packingTips.join('；') : spec.packingTips) || '';
 
       if (resolvedMode === 'daily') {
@@ -5155,8 +5152,8 @@ CRITICAL RULES:
     `;
   }
 
-  function renderItineraryInfoGrid(plan) {
-    const hasFoods = Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0;
+  function renderItineraryInfoGrid(plan, mode) {
+    const hasFoods = mode === 'daily' && Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0;
     const hasTips = Boolean(plan.tips);
     if (!hasFoods && !hasTips) return '';
 
@@ -5332,7 +5329,7 @@ CRITICAL RULES:
     }
 
     html += `</div>`; // end itin-timeline
-    html += renderItineraryInfoGrid(plan);
+    html += renderItineraryInfoGrid(plan, mode);
     return html;
   }
 
@@ -5612,7 +5609,7 @@ CRITICAL RULES:
       });
     }
 
-    if (Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0) {
+    if (mode === 'daily' && Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0) {
       text += `\n🍜 必嚐在地美食：\n`;
       plan.mustTryFoods.forEach(f => {
         text += `• ${f}\n`;
