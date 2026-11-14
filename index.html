@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- App Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.6.4">
+  <link rel="stylesheet" href="styles.css?v=2.6.5">
 
   <!-- Anti-Tamper & Strict Data Isolation Styles -->
   <style id="antiTamperStyle">
@@ -101,7 +101,7 @@
           Unlock Space &rarr;
         </button>
       </form>
-      <div class="lock-footer-version">v2.6.4</div>
+      <div class="lock-footer-version">v2.6.5</div>
     </div>
   </div>
 
@@ -469,7 +469,7 @@
       <span class="footer-dot">•</span>
       <span class="footer-subtitle">Date &amp; Getaway Hub</span>
       <span class="footer-dot">•</span>
-      <span class="footer-version" id="appVersion">v2.6.4</span>
+      <span class="footer-version" id="appVersion">v2.6.5</span>
     </div>
   </footer>
 
@@ -792,23 +792,20 @@
       </div>
 
       <div class="itinerary-modal-body">
-        <!-- Planning Style Tabs -->
-        <div class="itin-mode-tabs" id="itinModeTabs" role="tablist" aria-label="Itinerary Planning Style">
-          <button type="button" class="itin-mode-tab active" data-mode="daily" role="tab" aria-selected="true" title="Day-by-day schedule with customizable duration and pace">
-            📅 Day-by-Day
-          </button>
-          <button type="button" class="itin-mode-tab" data-mode="area" role="tab" aria-selected="false" title="Group places to visit, cafes, and eats by neighborhood or area">
-            📍 By Area
-          </button>
-          <button type="button" class="itin-mode-tab" data-mode="vibe" role="tab" aria-selected="false" title="Curated by mood and weather: scenic views, cozy cafes, culture, romance, rainy-day spots">
-            ✨ By Vibe
-          </button>
-          <button type="button" class="itin-mode-tab" data-mode="foodie" role="tab" aria-selected="false" title="Morning coffee, iconic local eats, street markets, and date-night dining">
-            🍜 Foodie Trail
-          </button>
-          <button type="button" class="itin-mode-tab" data-mode="highlights" role="tab" aria-selected="false" title="Iconic must-dos, hidden local gems, couple rituals, and traps to skip">
-            ⭐ Must-Dos &amp; Gems
-          </button>
+        <!-- Pickable Multiple Planning Options -->
+        <div class="itin-picker-section">
+          <div class="itin-picker-header">
+            <span class="itin-picker-title">✦ Planning Options <span class="itin-picker-sub">(pick one or multiple to generate &amp; save)</span></span>
+            <div class="itin-picker-actions">
+              <button type="button" class="itin-picker-link" id="btnItinViewAll" style="display: none;">📚 View All Saved</button>
+              <button type="button" class="itin-picker-link" id="btnItinPickMissing" title="Select options not generated yet">Pick Unsaved</button>
+              <button type="button" class="itin-picker-link" id="btnItinPickAll">Pick All</button>
+              <button type="button" class="itin-picker-link" id="btnItinPickNone">Clear Picks</button>
+            </div>
+          </div>
+          <div class="itin-mode-tabs" id="itinModeTabs" role="tablist" aria-label="Itinerary Planning Options">
+            <!-- Populated dynamically from ITINERARY_MODES -->
+          </div>
         </div>
 
         <!-- Controls Toolbar: Mode-specific options + Generate -->
@@ -1068,13 +1065,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="firebaseConfig.js?v=2.6.4"></script>
+  <script src="firebaseConfig.js?v=2.6.5"></script>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   
   <!-- Seed Data & Application Script -->
-  <script src="defaultData.js?v=2.6.4"></script>
-  <script src="app.js?v=2.6.4"></script>
+  <script src="defaultData.js?v=2.6.5"></script>
+  <script src="app.js?v=2.6.5"></script>
 </body>
 </html>

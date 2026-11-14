@@ -53,3 +53,7 @@ service cloud.firestore {
 
 - **XSS Sanitization**: Dynamic content in toasts, tables, and cards is strictly escaped via `escapeHTML()`.
 - **Zero Heavy Dependencies**: Pure Vanilla JavaScript, HTML5, and CSS3 with Leaflet.js for maps and Web Audio API for synthetic SFX.
+
+## Versioning
+
+Always increment the version number every time changes are made, keeping all 6 occurrences in `index.html` synchronized (`styles.css?v=...`, `.lock-footer-version`, `#appVersion`, `firebaseConfig.js?v=...`, `defaultData.js?v=...`, and `app.js?v=...`).

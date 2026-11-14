@@ -3997,12 +3997,69 @@ optgroup {
   gap: 14px;
 }
 
+.itin-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itin-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.itin-picker-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.itin-picker-sub {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.itin-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.itin-picker-link {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.itin-picker-link:hover {
+  color: #fff;
+  border-color: rgba(129, 140, 248, 0.45);
+  background: rgba(99, 102, 241, 0.14);
+}
+
+.itin-picker-link.active {
+  color: #fff;
+  border-color: rgba(129, 140, 248, 0.6);
+  background: rgba(99, 102, 241, 0.28);
+}
+
 .itin-mode-tabs {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 5px;
+  padding: 6px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -4013,12 +4070,12 @@ optgroup {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  padding: 5px 10px;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 9px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -4027,14 +4084,41 @@ optgroup {
 
 .itin-mode-tab:hover {
   color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.itin-mode-tab.picked {
+  border-color: rgba(129, 140, 248, 0.35);
+  color: #e2e8f0;
 }
 
 .itin-mode-tab.active {
   color: #fff;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28) 0%, rgba(168, 85, 247, 0.22) 100%);
-  border-color: rgba(129, 140, 248, 0.5);
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.18);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(168, 85, 247, 0.24) 100%);
+  border-color: rgba(129, 140, 248, 0.65);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.2);
+}
+
+.itin-pick-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.65rem;
+  line-height: 1;
+  color: transparent;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.itin-mode-tab.picked .itin-pick-check {
+  background: #6366f1;
+  border-color: #818cf8;
+  color: #fff;
 }
 
 .itin-mode-tab.has-plan::after {
@@ -4046,6 +4130,21 @@ optgroup {
   box-shadow: 0 0 6px rgba(52, 211, 153, 0.7);
   display: inline-block;
   margin-left: 2px;
+}
+
+.itin-all-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 10px;
+  color: #e0e7ff;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .itin-mode-hint {
@@ -4393,6 +4492,18 @@ optgroup {
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
+.itin-food-kind-badge {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.11);
+  border: 1px solid rgba(45, 212, 191, 0.24);
   padding: 1px 7px;
   border-radius: 6px;
   margin-left: 6px;
