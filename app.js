@@ -1383,6 +1383,249 @@
     } catch (e) { }
   }
 
+  const ITINERARY_MODES = {
+    daily: {
+      id: 'daily',
+      label: '📅 Day-by-Day',
+      badge: 'Day-by-Day',
+      icon: '📅',
+      hint: 'Structured day-by-day schedule tailored to your trip length and pace.',
+      emptyTitle: 'Start Planning Your Journey',
+      emptyDesc: 'Let Gemini AI craft an evocative, well-paced couples starter schedule—complete with morning, afternoon, and evening sights, sweet couple micro-moments, and local foodie highlights.',
+      loadingTitle: 'Curating Day-by-Day Itinerary',
+      loadingDesc: 'Crafting daily highlights, sweet couple moments, and authentic foodie spots'
+    },
+    area: {
+      id: 'area',
+      label: '📍 By Area',
+      badge: 'By Area',
+      icon: '📍',
+      hint: 'Groups must-visit spots, cafes & eats by neighborhood so you can explore freely without a strict daily clock.',
+      emptyTitle: 'Explore Places Grouped by Area',
+      emptyDesc: 'Group top sights, cozy cafes, local eats, and romantic stops by district or neighborhood—ideal for wandering freely without being tied to a rigid day-by-day schedule.',
+      loadingTitle: 'Mapping Neighborhoods & Areas',
+      loadingDesc: 'Clustering nearby spots, cozy cafes, transit tips, and couple moments by district'
+    },
+    vibe: {
+      id: 'vibe',
+      label: '✨ By Vibe',
+      badge: 'By Vibe',
+      icon: '✨',
+      hint: 'Organizes spots by mood & weather—golden hour views, cozy cafes, culture, romantic nights & rainy-day backups.',
+      emptyTitle: 'Curate Places by Mood & Vibe',
+      emptyDesc: 'Organize ideas by how you feel or what the weather brings—scenic viewpoints, cozy cafes, cultural markets, romantic evenings, and indoor rainy-day hideaways.',
+      loadingTitle: 'Curating Mood & Vibe Clusters',
+      loadingDesc: 'Matching scenic views, cozy corners, evening dates, and rainy-day hideaways'
+    },
+    foodie: {
+      id: 'foodie',
+      label: '🍜 Foodie Trail',
+      badge: 'Foodie Trail',
+      icon: '🍜',
+      hint: 'Dedicated culinary map—morning bakeries & coffee, iconic local eats, markets, desserts & date-night bars.',
+      emptyTitle: 'Build a Foodie & Café Trail',
+      emptyDesc: 'Get a dedicated culinary guide organized from morning coffee and bakeries to iconic local dishes, street markets, sweet treats, and romantic dinner spots.',
+      loadingTitle: 'Curating Foodie & Café Trail',
+      loadingDesc: 'Selecting signature dishes, morning coffee stops, markets, and date-night dining'
+    },
+    highlights: {
+      id: 'highlights',
+      label: '⭐ Must-Dos & Gems',
+      badge: 'Must-Dos',
+      icon: '⭐',
+      hint: 'High-signal cheat sheet: iconic must-dos, hidden local gems, couple rituals & tourist traps to skip.',
+      emptyTitle: 'Create a Must-Dos & Hidden Gems Guide',
+      emptyDesc: 'Cut straight to the best picks—prioritized iconic landmarks, quiet local secrets, romantic couple rituals, and smart swaps for overrated tourist traps.',
+      loadingTitle: 'Curating Must-Dos & Hidden Gems',
+      loadingDesc: 'Separating iconic highlights, secret local corners, couple rituals, and smart swaps'
+    }
+  };
+
+  function hasSinglePlanContent(plan, mode) {
+    if (!plan || typeof plan !== 'object') return false;
+    const resolvedMode = mode || plan.mode || (Array.isArray(plan.days) ? 'daily' : Array.isArray(plan.areas) ? 'area' : 'vibe');
+    if (resolvedMode === 'daily') return Array.isArray(plan.days) && plan.days.length > 0;
+    if (resolvedMode === 'area') return Array.isArray(plan.areas) && plan.areas.length > 0;
+    return Array.isArray(plan.groups) && plan.groups.length > 0;
+  }
+
+  function hasItineraryContent(itinerary) {
+    if (!itinerary || typeof itinerary !== 'object') return false;
+    if (Array.isArray(itinerary.days) && itinerary.days.length > 0) return true;
+    if (Array.isArray(itinerary.areas) && itinerary.areas.length > 0) return true;
+    if (Array.isArray(itinerary.groups) && itinerary.groups.length > 0) return true;
+    if (itinerary.plans && typeof itinerary.plans === 'object') {
+      return Object.keys(itinerary.plans).some(m => hasSinglePlanContent(itinerary.plans[m], m));
+    }
+    return false;
+  }
+
+  function getItineraryPlan(itinerary, mode) {
+    if (!itinerary || typeof itinerary !== 'object') return null;
+    const targetMode = ITINERARY_MODES[mode] ? mode : 'daily';
+    if (itinerary.plans && itinerary.plans[targetMode] && hasSinglePlanContent(itinerary.plans[targetMode], targetMode)) {
+      return itinerary.plans[targetMode];
+    }
+    if (targetMode === 'daily' && Array.isArray(itinerary.days) && itinerary.days.length > 0) {
+      return itinerary;
+    }
+    if (itinerary.mode === targetMode && hasSinglePlanContent(itinerary, targetMode)) {
+      return itinerary;
+    }
+    return null;
+  }
+
+  function getSavedItineraryModes(itinerary) {
+    return Object.keys(ITINERARY_MODES).filter(m => Boolean(getItineraryPlan(itinerary, m)));
+  }
+
+  function getActiveItineraryMode(itinerary) {
+    if (itinerary && itinerary.activeMode && ITINERARY_MODES[itinerary.activeMode]) {
+      return itinerary.activeMode;
+    }
+    if (itinerary && itinerary.mode && ITINERARY_MODES[itinerary.mode]) {
+      return itinerary.mode;
+    }
+    const saved = getSavedItineraryModes(itinerary);
+    if (saved.length > 0) return saved[0];
+    return 'daily';
+  }
+
+  function getItineraryButtonBadge(itinerary) {
+    const saved = getSavedItineraryModes(itinerary);
+    if (saved.length === 0) return '';
+    const activeMode = getActiveItineraryMode(itinerary);
+    const displayMode = saved.includes(activeMode) ? activeMode : saved[0];
+    const plan = getItineraryPlan(itinerary, displayMode);
+    let primary = '';
+    if (displayMode === 'daily' && plan) {
+      primary = `${plan.targetDays || plan.days.length}D`;
+    } else if (ITINERARY_MODES[displayMode]) {
+      primary = ITINERARY_MODES[displayMode].badge;
+    }
+    return saved.length > 1 ? `${primary} +${saved.length - 1}` : primary;
+  }
+
+  function extractItineraryPlansMap(itinerary) {
+    const plans = {};
+    if (!itinerary || typeof itinerary !== 'object') return plans;
+    if (itinerary.plans && typeof itinerary.plans === 'object') {
+      Object.keys(itinerary.plans).forEach(m => {
+        if (ITINERARY_MODES[m] && hasSinglePlanContent(itinerary.plans[m], m)) {
+          plans[m] = itinerary.plans[m];
+        }
+      });
+    }
+    if (!plans.daily && Array.isArray(itinerary.days) && itinerary.days.length > 0) {
+      plans.daily = {
+        mode: 'daily',
+        summary: itinerary.summary || '',
+        targetDays: itinerary.targetDays || itinerary.days.length,
+        pace: itinerary.pace || 'relaxed',
+        days: itinerary.days,
+        mustTryFoods: itinerary.mustTryFoods || [],
+        tips: itinerary.tips || '',
+        ...(itinerary.generatedAt !== undefined ? { generatedAt: itinerary.generatedAt } : {}),
+        ...(itinerary.model !== undefined ? { model: itinerary.model } : {})
+      };
+    }
+    if (itinerary.mode && itinerary.mode !== 'daily' && !plans[itinerary.mode] && hasSinglePlanContent(itinerary, itinerary.mode)) {
+      const cloned = { ...itinerary };
+      delete cloned.plans;
+      delete cloned.notes;
+      delete cloned.activeMode;
+      plans[itinerary.mode] = cloned;
+    }
+    return plans;
+  }
+
+  function stripUndefinedDeep(value) {
+    if (Array.isArray(value)) {
+      return value.filter(v => v !== undefined).map(stripUndefinedDeep);
+    }
+    if (value && typeof value === 'object') {
+      const out = {};
+      Object.keys(value).forEach(k => {
+        if (value[k] !== undefined) {
+          out[k] = stripUndefinedDeep(value[k]);
+        }
+      });
+      return out;
+    }
+    return value;
+  }
+
+  function buildItineraryContainer(plans, activeMode, notes) {
+    const cleanPlans = {};
+    Object.keys(plans || {}).forEach(m => {
+      if (ITINERARY_MODES[m] && hasSinglePlanContent(plans[m], m)) {
+        cleanPlans[m] = stripUndefinedDeep(plans[m]);
+      }
+    });
+    const modeKeys = Object.keys(cleanPlans);
+    if (modeKeys.length === 0) return null;
+    const resolvedActive = (activeMode && cleanPlans[activeMode]) ? activeMode : modeKeys[0];
+    const container = {
+      activeMode: resolvedActive,
+      plans: cleanPlans,
+      notes: notes || ''
+    };
+    if (cleanPlans.daily) {
+      container.summary = cleanPlans.daily.summary || '';
+      if (cleanPlans.daily.targetDays !== undefined) container.targetDays = cleanPlans.daily.targetDays;
+      if (cleanPlans.daily.pace !== undefined) container.pace = cleanPlans.daily.pace;
+      container.days = cleanPlans.daily.days;
+      if (cleanPlans.daily.mustTryFoods !== undefined) container.mustTryFoods = cleanPlans.daily.mustTryFoods;
+      if (cleanPlans.daily.tips !== undefined) container.tips = cleanPlans.daily.tips;
+      if (cleanPlans.daily.generatedAt !== undefined) container.generatedAt = cleanPlans.daily.generatedAt;
+      if (cleanPlans.daily.model !== undefined) container.model = cleanPlans.daily.model;
+    }
+    return container;
+  }
+
+  function storeItineraryPlanForMode(trip, mode, generatedSpec) {
+    const existing = trip.itinerary && typeof trip.itinerary === 'object' ? trip.itinerary : {};
+    const plans = extractItineraryPlansMap(existing);
+    const cleanPlan = stripUndefinedDeep({ ...generatedSpec, mode });
+    delete cleanPlan.plans;
+    delete cleanPlan.notes;
+    delete cleanPlan.activeMode;
+    plans[mode] = cleanPlan;
+    trip.itinerary = buildItineraryContainer(plans, mode, existing.notes || '');
+  }
+
+  function removeItineraryPlanForMode(trip, mode) {
+    if (!trip || !trip.itinerary) return;
+    const plans = extractItineraryPlansMap(trip.itinerary);
+    delete plans[mode];
+    const remaining = Object.keys(plans);
+    if (remaining.length === 0) {
+      delete trip.itinerary;
+    } else {
+      trip.itinerary = buildItineraryContainer(plans, remaining[0], trip.itinerary.notes || '');
+    }
+  }
+
+  function mergeItineraries(primary, secondary) {
+    const hasP = hasItineraryContent(primary);
+    const hasS = hasItineraryContent(secondary);
+    if (!hasP && !hasS) return undefined;
+    if (!hasP) return buildItineraryContainer(extractItineraryPlansMap(secondary), secondary.activeMode, secondary.notes || '');
+    if (!hasS) return buildItineraryContainer(extractItineraryPlansMap(primary), primary.activeMode, primary.notes || '');
+    const pPlans = extractItineraryPlansMap(primary);
+    const sPlans = extractItineraryPlansMap(secondary);
+    const mergedPlans = { ...sPlans, ...pPlans };
+    return buildItineraryContainer(
+      mergedPlans,
+      primary.activeMode || secondary.activeMode,
+      primary.notes || secondary.notes || ''
+    );
+  }
+
+  function countItineraryModes(itinerary) {
+    return Object.keys(extractItineraryPlansMap(itinerary)).length;
+  }
+
   function saveLocalData() {
     try {
       if (Array.isArray(state.trips)) {
@@ -1510,9 +1753,9 @@
 
       // Populate pre-generated itineraries from defaults if missing locally
       if (Array.isArray(state.trips) && Array.isArray(window.DEFAULT_TRIPS)) {
-        const defMap = new Map(window.DEFAULT_TRIPS.filter(t => t && t.id && t.itinerary && t.itinerary.days?.length).map(t => [t.id, t.itinerary]));
+        const defMap = new Map(window.DEFAULT_TRIPS.filter(t => t && t.id && hasItineraryContent(t.itinerary)).map(t => [t.id, t.itinerary]));
         state.trips.forEach(t => {
-          if ((!t.itinerary || !t.itinerary.days || t.itinerary.days.length === 0) && defMap.has(t.id)) {
+          if (!hasItineraryContent(t.itinerary) && defMap.has(t.id)) {
             t.itinerary = JSON.parse(JSON.stringify(defMap.get(t.id)));
           }
         });
@@ -1591,22 +1834,33 @@
           if (remoteTime > localTime) {
             // Remote is newer
             const merged = { ...rt };
-            if ((!merged.itinerary || !merged.itinerary.days?.length) && lt.itinerary?.days?.length) {
-              merged.itinerary = lt.itinerary;
+            const combinedItin = mergeItineraries(rt.itinerary, lt.itinerary);
+            if (combinedItin) {
+              if (countItineraryModes(combinedItin) > countItineraryModes(rt.itinerary)) {
+                needsPush = true;
+              }
+              merged.itinerary = combinedItin;
             }
             tripMap.set(rt.id, merged);
             hasRemoteChanges = true;
           } else if (localTime > remoteTime) {
-            // Local is newer: preserve local and signal cloud push (adopt remote itinerary if local lacks it)
-            if ((!lt.itinerary || !lt.itinerary.days?.length) && rt.itinerary?.days?.length) {
-              lt.itinerary = rt.itinerary;
-              hasRemoteChanges = true;
+            // Local is newer: preserve local and signal cloud push (adopt remote itinerary modes if local lacks them)
+            const combinedItin = mergeItineraries(lt.itinerary, rt.itinerary);
+            if (combinedItin) {
+              if (countItineraryModes(combinedItin) > countItineraryModes(lt.itinerary)) {
+                hasRemoteChanges = true;
+              }
+              lt.itinerary = combinedItin;
             }
             tripMap.set(lt.id, lt);
             needsPush = true;
           } else {
-            // Timestamps equal: merge safely (preserve visited & itinerary if either has it)
-            const chosenItin = (lt.itinerary?.days?.length ? lt.itinerary : null) || (rt.itinerary?.days?.length ? rt.itinerary : null);
+            // Timestamps equal: merge safely (preserve visited & all itinerary modes if either has them)
+            const chosenItin = mergeItineraries(lt.itinerary, rt.itinerary);
+            if (chosenItin) {
+              if (countItineraryModes(chosenItin) > countItineraryModes(rt.itinerary)) needsPush = true;
+              if (countItineraryModes(chosenItin) > countItineraryModes(lt.itinerary)) hasRemoteChanges = true;
+            }
             const merged = {
               ...lt,
               ...rt,
@@ -1635,9 +1889,9 @@
     const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
     const defSource = isSebLynn ? window.DEFAULT_TRIPS : window.DEFAULT_VA_TRIPS;
     if (Array.isArray(defSource)) {
-      const defMap = new Map(defSource.filter(d => d && d.id && d.itinerary?.days?.length).map(d => [d.id, d.itinerary]));
+      const defMap = new Map(defSource.filter(d => d && d.id && hasItineraryContent(d.itinerary)).map(d => [d.id, d.itinerary]));
       for (const t of tripMap.values()) {
-        if ((!t.itinerary || !t.itinerary.days || t.itinerary.days.length === 0) && defMap.has(t.id)) {
+        if (!hasItineraryContent(t.itinerary) && defMap.has(t.id)) {
           t.itinerary = JSON.parse(JSON.stringify(defMap.get(t.id)));
         }
       }
@@ -2078,8 +2332,8 @@
         const docRef = this.getRoomDoc();
         if (!docRef) return;
         const payload = {
-          activities: state.activities,
-          trips: state.trips,
+          activities: stripUndefinedDeep(state.activities),
+          trips: stripUndefinedDeep(state.trips),
           deletedTripIds: Array.from(state.deletedTripIds || []).slice(-300),
           deletedActivityIds: Array.from(state.deletedActivityIds || []).slice(-300),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2116,8 +2370,8 @@
       const docRef = this.getRoomDoc();
       if (!docRef) return;
       const payload = {
-        activities: state.activities,
-        trips: state.trips,
+        activities: stripUndefinedDeep(state.activities),
+        trips: stripUndefinedDeep(state.trips),
         deletedTripIds: Array.from(state.deletedTripIds || []).slice(-300),
         deletedActivityIds: Array.from(state.deletedActivityIds || []).slice(-300),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2400,8 +2654,9 @@
     // Itinerary button indicator
     const itinBtn = document.getElementById('stItineraryBtn');
     if (itinBtn) {
-      if (trip.itinerary && Array.isArray(trip.itinerary.days) && trip.itinerary.days.length > 0) {
-        itinBtn.innerHTML = `✨ Itinerary <span style="font-size:0.7rem; opacity:0.85;">(${trip.itinerary.targetDays || trip.itinerary.days.length}D)</span>`;
+      if (hasItineraryContent(trip.itinerary)) {
+        const badgeText = getItineraryButtonBadge(trip.itinerary);
+        itinBtn.innerHTML = `✨ Itinerary${badgeText ? ` <span style="font-size:0.7rem; opacity:0.85;">(${escapeHTML(badgeText)})</span>` : ''}`;
         itinBtn.title = 'View Planned AI Itinerary';
       } else {
         itinBtn.innerHTML = '🗺️ Itinerary';
@@ -2971,7 +3226,7 @@
           <td>${escapeHTML(seasonsText)}</td>
           <td class="table-actions-cell">
             <div class="table-actions-wrap">
-              <button class="btn-itinerary-table" data-id="${escapeHTML(t.id)}" title="${t.itinerary ? 'View Saved AI Itinerary' : 'Plan AI Itinerary'}">${t.itinerary ? '✨' : '🧭'}</button>
+              <button class="btn-itinerary-table" data-id="${escapeHTML(t.id)}" title="${hasItineraryContent(t.itinerary) ? 'View Saved AI Itinerary' : 'Plan AI Itinerary'}">${hasItineraryContent(t.itinerary) ? '✨' : '🧭'}</button>
               <button class="btn-locate-trip trip-fly-trigger" data-id="${escapeHTML(t.id)}" title="Locate & Fly to Map">🗺️</button>
               <button class="btn-edit-table" data-id="${escapeHTML(t.id)}" title="Edit Destination">✏️</button>
               <button class="btn-del" data-id="${escapeHTML(t.id)}" title="Delete">✕</button>
@@ -4122,12 +4377,149 @@ environment must be one of: "indoor", "outdoor", "any".`;
       throw new Error(errMsg);
     },
 
-    async generateItinerary(trip, options = {}) {
-      if (!trip) throw new Error('Trip object is required for itinerary generation.');
+    buildItineraryPrompt(trip, options = {}) {
+      const mode = ITINERARY_MODES[options.mode] ? options.mode : 'daily';
       const targetDays = parseInt(options.targetDays, 10) || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
       const pace = options.pace || 'relaxed';
-      const coupleNames = getCoupleNames();
+      const coupleNames = options.coupleNames || getCoupleNames();
+      const seasonsList = Array.isArray(trip.seasons) && trip.seasons.length > 0 ? trip.seasons.join(', ') : 'all seasons';
+      const typicalDuration = (trip.minDays && trip.maxDays) ? `${trip.minDays}-${trip.maxDays} days` : `${targetDays} days`;
 
+      if (mode === 'area') {
+        return `You are an elite romantic travel designer for ${coupleNames}, a loving couple departing from Taiwan.
+Create a flexible, area-by-area exploration guide for "${trip.name}" (Location: ${trip.locationName || trip.name}, typical trip ${typicalDuration}).
+Do NOT organize by Day 1 / Day 2—instead, group recommended sights, cozy cafes, local restaurants, and scenic walks by neighborhood / district / geographic area so the couple can pick any area and wander freely.
+Best Seasons: ${seasonsList}.
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "area",
+  "summary": "1-2 inspiring sentences in Traditional Chinese capturing the neighborhood character and flexible exploring rhythm of ${trip.name}.",
+  "areas": [
+    {
+      "name": "Area / District Name in Traditional Chinese with emoji (e.g. 祇園・東山古街區 🏮)",
+      "vibe": "Short atmospheric tagline in Traditional Chinese (e.g. 百年町家與石板坡道的古都風情)",
+      "bestTime": "Best time of day to visit in Traditional Chinese (e.g. 清晨 8:00 前或傍晚點燈時分)",
+      "gettingAround": "Practical transit & walking tip in Traditional Chinese",
+      "places": [
+        {
+          "name": "Specific real place, cafe, viewpoint, or shop name",
+          "category": "景點 | 咖啡廳 | 美食 | 散步 | 購物 | 體驗",
+          "note": "Concise, specific 1-sentence reason to visit or what to do/order in Traditional Chinese"
+        }
+      ],
+      "coupleHighlight": "A tender, specific romantic couple micro-moment in this area in Traditional Chinese"
+    }
+  ],
+  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
+  "tips": "2-3 practical tips for Taiwanese travelers (transit cards, area-hopping order, luggage lockers, booking advice) in Traditional Chinese."
+}
+
+CRITICAL RULES:
+1. Provide 4 to 6 distinct, geographically logical areas in the 'areas' array, each with 3 to 5 specific real places in 'places'.
+2. Ground all recommendations in real, authentic locations, neighborhoods, cafes, and eateries of ${trip.name} / ${trip.locationName}.
+3. All prose must be in natural, evocative Traditional Chinese (繁體中文).
+4. NEVER use generic filler clichés.`;
+      }
+
+      if (mode === 'vibe') {
+        return `You are an elite romantic travel designer for ${coupleNames}, a loving couple departing from Taiwan.
+Curate a mood-and-weather-based travel guide for "${trip.name}" (Location: ${trip.locationName || trip.name}) grouped by VIBE rather than by day.
+Best Seasons: ${seasonsList}.
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "vibe",
+  "summary": "1-2 inspiring sentences in Traditional Chinese about exploring ${trip.name} by mood and weather.",
+  "groups": [
+    {
+      "title": "Vibe Category Title with emoji (use 5 distinct moods: 🌅 Golden Hour & Scenic Views, ☕ Cozy Cafés & Slow Corners, 🎨 Culture, Craft & Markets, 🌙 Romantic Evenings & Nightlife, 🌧️ Rainy-Day & Indoor Hideaways — written in Traditional Chinese)",
+      "subtitle": "Short note on when to choose this vibe in Traditional Chinese",
+      "items": [
+        {
+          "name": "Specific real place or activity name",
+          "area": "District / Neighborhood tag",
+          "note": "Specific 1-sentence highlight & timing tip in Traditional Chinese"
+        }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
+  "tips": "2-3 practical mood/weather planning tips for Taiwanese travelers in Traditional Chinese."
+}
+
+CRITICAL RULES:
+1. Provide 4 to 5 distinct mood/vibe groups, each with 3 to 4 real, specific items.
+2. Ground all recommendations in real locations of ${trip.name} / ${trip.locationName}.
+3. Output all prose in natural, evocative Traditional Chinese (繁體中文).`;
+      }
+
+      if (mode === 'foodie') {
+        return `You are a romantic culinary & cafe travel curator for ${coupleNames}, a loving couple departing from Taiwan.
+Create a dedicated Foodie & Café Trail for "${trip.name}" (Location: ${trip.locationName || trip.name}), organized by meal & craving categories rather than by day.
+Best Seasons: ${seasonsList}.
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "foodie",
+  "summary": "1-2 appetizing, evocative sentences in Traditional Chinese capturing the local food and cafe soul of ${trip.name}.",
+  "groups": [
+    {
+      "title": "Culinary Category in Traditional Chinese with emoji (e.g. ☕ 晨光烘焙與精品咖啡, 🏮 在地必吃經典料理, 🍢 街頭小吃與特色市集, 🍰 甜點午茶與伴手禮, 🍷 浪漫晚餐與微醺小酌)",
+      "subtitle": "Occasion or atmosphere note in Traditional Chinese",
+      "items": [
+        {
+          "name": "Specific real restaurant, cafe, market, or dish spot",
+          "area": "District / Neighborhood tag",
+          "mustOrder": "Specific signature dish or drink to order",
+          "note": "1-sentence flavor, seating vibe, or reservation tip in Traditional Chinese"
+        }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4", "Specific dish 5"],
+  "tips": "2-3 practical dining tips for Taiwanese travelers (booking windows, cash vs card, peak hours, tipping) in Traditional Chinese."
+}
+
+CRITICAL RULES:
+1. Provide 4 to 5 culinary groups, each with 3 to 4 real, authentic local spots.
+2. Include specific signature items in 'mustOrder'.
+3. Output all prose in natural Traditional Chinese (繁體中文).`;
+      }
+
+      if (mode === 'highlights') {
+        return `You are an insider romantic travel strategist for ${coupleNames}, a loving couple departing from Taiwan.
+Create a high-signal "Must-Dos & Hidden Gems" cheat sheet for "${trip.name}" (Location: ${trip.locationName || trip.name}).
+Best Seasons: ${seasonsList}.
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "highlights",
+  "summary": "1-2 sharp, inspiring sentences in Traditional Chinese summarizing what makes ${trip.name} truly unforgettable.",
+  "groups": [
+    {
+      "title": "Section Title in Traditional Chinese with emoji (provide exactly these 4 sections: 🏆 不可錯過的經典必去, 💎 避開人潮的私房秘境, 💖 情侶專屬浪漫儀式感, 🚫 聰明避雷與替代方案)",
+      "subtitle": "How to use this section in Traditional Chinese",
+      "items": [
+        {
+          "name": "Specific landmark, hidden spot, couple ritual, or trap-to-swap",
+          "area": "District or quick tag (e.g. 清晨限定 / 需預約 / 替代提案)",
+          "note": "Actionable 1-2 sentence insider advice in Traditional Chinese"
+        }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific food/dish 1", "Specific food/dish 2", "Specific food/dish 3", "Specific food/dish 4"],
+  "tips": "2-3 high-value logistics & timing tips for Taiwanese travelers in Traditional Chinese."
+}
+
+CRITICAL RULES:
+1. Provide 4 focused sections with 3 to 4 concrete, specific items each.
+2. In the "Smart Swaps / Traps to Skip" section, name real overcrowded/overrated things and give the better local alternative.
+3. Output all prose in natural Traditional Chinese (繁體中文).`;
+      }
+
+      // Default: 'daily'
       const paceDescriptions = {
         relaxed: 'Relaxed & Romantic (1-2 main highlights per day, lots of café resting, late mornings, zero rushing)',
         balanced: 'Balanced Highlights (2-3 sights per day, good mix of culture, scenic walks, and romantic dining)',
@@ -4135,19 +4527,14 @@ environment must be one of: "indoor", "outdoor", "any".`;
       };
       const paceGuidance = paceDescriptions[pace] || paceDescriptions.relaxed;
 
-      // 1. Direct Google Gemini API call
-      const directKey = await this.getGeminiApiKey();
-      if (!directKey) {
-        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
-      } else {
-        const seasonsList = Array.isArray(trip.seasons) && trip.seasons.length > 0 ? trip.seasons.join(', ') : 'all seasons';
-        const itineraryPrompt = `You are an elite romantic travel designer for ${coupleNames}, a loving couple departing from Taiwan.
+      return `You are an elite romantic travel designer for ${coupleNames}, a loving couple departing from Taiwan.
 Design a breathtaking, practical, and deeply memorable ${targetDays}-day couples starter itinerary for "${trip.name}" (Location: ${trip.locationName || trip.name}).
 Preferred Pace: ${paceGuidance}.
 Best Seasons: ${seasonsList}.
 
 Return ONLY a valid JSON object matching this exact schema:
 {
+  "mode": "daily",
   "summary": "1-2 inspiring sentences capturing the spirit, rhythm, and romantic highlight of this ${targetDays}-day journey in Traditional Chinese.",
   "targetDays": ${targetDays},
   "pace": "${pace}",
@@ -4170,21 +4557,65 @@ CRITICAL RULES:
 2. Ground all recommendations in real, authentic locations, neighborhoods, cafes, and scenic vistas of ${trip.name} / ${trip.locationName}.
 3. All prose must be in natural, evocative Traditional Chinese (繁體中文).
 4. NEVER use generic filler clichés like "度過美好的一天" or "留下甜蜜的回憶". Make every day specific, sensory, and romantic.`;
+    },
 
+    normalizeItinerarySpec(spec, mode, { targetDays, pace, modelName } = {}) {
+      if (!spec || typeof spec !== 'object') return null;
+      const resolvedMode = ITINERARY_MODES[mode] ? mode : 'daily';
+      spec.mode = resolvedMode;
+      spec.generatedAt = spec.generatedAt || Date.now();
+      if (modelName) spec.model = modelName;
+      spec.mustTryFoods = spec.mustTryFoods || spec.foodMustTry || [];
+      spec.tips = spec.tips || (Array.isArray(spec.packingTips) ? spec.packingTips.join('；') : spec.packingTips) || '';
+
+      if (resolvedMode === 'daily') {
+        if (!Array.isArray(spec.days) || spec.days.length === 0) return null;
+        spec.targetDays = targetDays || spec.targetDays || spec.totalDays || spec.days.length;
+        spec.pace = pace || spec.pace || 'relaxed';
+        spec.days.forEach((d, idx) => {
+          d.day = d.day || (idx + 1);
+          d.theme = d.theme || d.title || '';
+        });
+        return spec;
+      }
+
+      if (resolvedMode === 'area') {
+        if (!Array.isArray(spec.areas) || spec.areas.length === 0) return null;
+        spec.areas.forEach(a => {
+          a.name = a.name || a.area || a.title || '';
+          a.places = Array.isArray(a.places) ? a.places : (Array.isArray(a.items) ? a.items : []);
+        });
+        return spec;
+      }
+
+      // vibe, foodie, highlights
+      if (!Array.isArray(spec.groups) || spec.groups.length === 0) return null;
+      spec.groups.forEach(g => {
+        g.title = g.title || g.name || '';
+        g.items = Array.isArray(g.items) ? g.items : (Array.isArray(g.places) ? g.places : []);
+      });
+      return spec;
+    },
+
+    async generateItinerary(trip, options = {}) {
+      if (!trip) throw new Error('Trip object is required for itinerary generation.');
+      const mode = ITINERARY_MODES[options.mode] ? options.mode : 'daily';
+      const targetDays = parseInt(options.targetDays, 10) || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
+      const pace = options.pace || 'relaxed';
+      const coupleNames = getCoupleNames();
+
+      // 1. Direct Google Gemini API call
+      const directKey = await this.getGeminiApiKey();
+      if (!directKey) {
+        this.lastGeminiError = 'No Gemini API key configured. Please enter your Gemini API key in Settings (⚙️).';
+      } else {
+        const itineraryPrompt = this.buildItineraryPrompt(trip, { mode, targetDays, pace, coupleNames });
         const directSpec = await this.callGeminiDirect(itineraryPrompt);
-        if (directSpec && Array.isArray(directSpec.days) && directSpec.days.length > 0) {
-          directSpec.targetDays = targetDays;
-          directSpec.pace = pace;
-          directSpec.generatedAt = Date.now();
-          const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
-          directSpec.model = localStorage.getItem(modelProp) || 'gemini-3.5-flash-lite';
-          // Ensure theme and other normalization
-          directSpec.days.forEach(d => {
-            d.theme = d.theme || d.title || '';
-          });
-          directSpec.mustTryFoods = directSpec.mustTryFoods || directSpec.foodMustTry || [];
-          directSpec.tips = directSpec.tips || (Array.isArray(directSpec.packingTips) ? directSpec.packingTips.join('；') : directSpec.packingTips) || '';
-          return directSpec;
+        const modelProp = (typeof STORAGE_KEYS !== 'undefined' && STORAGE_KEYS.GEMINI_MODEL) ? STORAGE_KEYS.GEMINI_MODEL : 'app_gemini_active_model';
+        const activeModel = localStorage.getItem(modelProp) || 'gemini-3.5-flash-lite';
+        const normalizedDirect = this.normalizeItinerarySpec(directSpec, mode, { targetDays, pace, modelName: activeModel });
+        if (normalizedDirect) {
+          return normalizedDirect;
         }
       }
 
@@ -4195,6 +4626,7 @@ CRITICAL RULES:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'itinerary',
+            mode,
             destinationName: trip.name,
             query: trip.name,
             locationName: trip.locationName || '',
@@ -4209,17 +4641,8 @@ CRITICAL RULES:
           const srvData = await srvResp.json();
           if (srvData && srvData.success && srvData.spec) {
             srvData.spec._source = srvData.source || 'Firebase Cloud Function (Gemini)';
-            srvData.spec.generatedAt = Date.now();
-            srvData.spec.targetDays = targetDays;
-            srvData.spec.pace = pace;
-            if (Array.isArray(srvData.spec.days)) {
-              srvData.spec.days.forEach(d => {
-                d.theme = d.theme || d.title || '';
-              });
-            }
-            srvData.spec.mustTryFoods = srvData.spec.mustTryFoods || srvData.spec.foodMustTry || [];
-            srvData.spec.tips = srvData.spec.tips || (Array.isArray(srvData.spec.packingTips) ? srvData.spec.packingTips.join('；') : srvData.spec.packingTips) || '';
-            return srvData.spec;
+            const normalizedSrv = this.normalizeItinerarySpec(srvData.spec, mode, { targetDays, pace });
+            if (normalizedSrv) return normalizedSrv;
           }
         }
       } catch (e) { }
@@ -4297,6 +4720,77 @@ CRITICAL RULES:
   // 12.5. AI Travel Itinerary Planner System
   // =========================================================================
   let activeItineraryTripId = null;
+  let activeItineraryMode = 'daily';
+
+  function updateItineraryToolbarForMode(trip) {
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
+    const itin = trip ? trip.itinerary : null;
+
+    document.querySelectorAll('#itinModeTabs .itin-mode-tab').forEach(tab => {
+      const tabMode = tab.dataset.mode;
+      const isActive = tabMode === mode;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.classList.toggle('has-plan', Boolean(getItineraryPlan(itin, tabMode)));
+    });
+
+    const isDaily = mode === 'daily';
+    document.querySelectorAll('.itin-daily-only').forEach(el => {
+      el.style.display = isDaily ? 'flex' : 'none';
+    });
+
+    const hintEl = document.getElementById('itinModeHint');
+    if (hintEl) {
+      if (isDaily) {
+        hintEl.style.display = 'none';
+      } else {
+        hintEl.textContent = modeCfg.hint;
+        hintEl.style.display = 'block';
+      }
+    }
+
+    const genTextEl = document.getElementById('btnItinGenText');
+    if (genTextEl) {
+      const hasPlanForMode = Boolean(getItineraryPlan(itin, mode));
+      genTextEl.textContent = hasPlanForMode ? '✨ Regenerate' : '✨ Generate Plan';
+    }
+  }
+
+  function flushPendingItineraryNotes() {
+    if (!activeItineraryTripId) return;
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (!trip || !trip.itinerary) return;
+    const notesSection = document.getElementById('itinNotesSection');
+    const input = document.getElementById('itinNotesTextarea');
+    if (!notesSection || notesSection.style.display === 'none' || !input) return;
+    const nextNotes = input.value.trim();
+    if ((trip.itinerary.notes || '') !== nextNotes) {
+      trip.itinerary.notes = nextNotes;
+      trip.updatedAt = Date.now();
+      saveData();
+    }
+  }
+
+  function switchItineraryMode(mode) {
+    if (!ITINERARY_MODES[mode]) return;
+    flushPendingItineraryNotes();
+    activeItineraryMode = mode;
+    const trip = state.trips.find(t => t.id === activeItineraryTripId);
+    if (trip && trip.itinerary && getItineraryPlan(trip.itinerary, mode)) {
+      if (trip.itinerary.activeMode !== mode) {
+        trip.itinerary.activeMode = mode;
+        trip.updatedAt = Date.now();
+        saveData();
+      }
+      if (state.selectedTrip && state.selectedTrip.id === trip.id) {
+        renderSelectedTripCard();
+      }
+    }
+    updateItineraryToolbarForMode(trip);
+    renderItineraryContent(trip ? trip.itinerary : null, trip);
+    sfx.tap();
+  }
 
   function openItineraryModal(tripId) {
     const trip = state.trips.find(t => t.id === tripId) || state.selectedTrip;
@@ -4308,17 +4802,19 @@ CRITICAL RULES:
     activeItineraryTripId = trip.id;
 
     // Auto-rescue missing itinerary from default data if not present locally
-    if (!trip.itinerary || !Array.isArray(trip.itinerary.days) || trip.itinerary.days.length === 0) {
+    if (!hasItineraryContent(trip.itinerary)) {
       const isSebLynn = !state.currentCouple || state.currentCouple.id === 'seb_lynn';
       const defSource = isSebLynn ? window.DEFAULT_TRIPS : window.DEFAULT_VA_TRIPS;
       if (Array.isArray(defSource)) {
         const match = defSource.find(dt => dt && dt.id === trip.id);
-        if (match && match.itinerary && Array.isArray(match.itinerary.days) && match.itinerary.days.length > 0) {
+        if (match && hasItineraryContent(match.itinerary)) {
           trip.itinerary = JSON.parse(JSON.stringify(match.itinerary));
           saveData(true);
         }
       }
     }
+
+    activeItineraryMode = getActiveItineraryMode(trip.itinerary);
 
     const modal = document.getElementById('tripItineraryModal');
     if (!modal) return;
@@ -4329,13 +4825,15 @@ CRITICAL RULES:
     if (titleEl) titleEl.textContent = trip.name;
     if (locBadge) locBadge.textContent = trip.locationName || 'Destination';
 
+    const dailyPlan = getItineraryPlan(trip.itinerary, 'daily');
+
     // Populate duration options based on destination min/max days
     const daysSelect = document.getElementById('itinDaysSelect');
     if (daysSelect) {
       daysSelect.innerHTML = '';
       const minD = Math.max(1, (trip.minDays || 3) - 1);
       const maxD = Math.max(trip.maxDays || 7, (trip.minDays || 3) + 2);
-      const existingDays = trip.itinerary && (trip.itinerary.targetDays || (trip.itinerary.days && trip.itinerary.days.length));
+      const existingDays = dailyPlan && (dailyPlan.targetDays || (dailyPlan.days && dailyPlan.days.length));
       const defaultDays = existingDays || Math.round(((trip.minDays || 3) + (trip.maxDays || 7)) / 2) || 5;
 
       for (let d = minD; d <= maxD; d++) {
@@ -4358,10 +4856,10 @@ CRITICAL RULES:
     // Set pace selector
     const paceSelect = document.getElementById('itinPaceSelect');
     if (paceSelect) {
-      paceSelect.value = (trip.itinerary && trip.itinerary.pace) || 'relaxed';
+      paceSelect.value = (dailyPlan && dailyPlan.pace) || 'relaxed';
     }
 
-    // Render content
+    updateItineraryToolbarForMode(trip);
     renderItineraryContent(trip.itinerary, trip);
 
     modal.style.display = 'flex';
@@ -4369,12 +4867,51 @@ CRITICAL RULES:
   }
 
   function closeItineraryModal() {
+    flushPendingItineraryNotes();
     const modal = document.getElementById('tripItineraryModal');
     if (modal) {
       modal.style.display = 'none';
       sfx.tap();
     }
     activeItineraryTripId = null;
+  }
+
+  function getEmptyStateButtonLabel(mode) {
+    if (mode === 'daily') {
+      const daysEl = document.getElementById('itinDaysSelect');
+      const currentDays = daysEl ? daysEl.value : 5;
+      return `✨ Generate Canvas (${currentDays} Days)`;
+    }
+    const modeCfg = ITINERARY_MODES[mode];
+    return `✨ Generate ${modeCfg ? modeCfg.badge : 'Plan'}`;
+  }
+
+  function renderItineraryInfoGrid(plan) {
+    const hasFoods = Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0;
+    const hasTips = Boolean(plan.tips);
+    if (!hasFoods && !hasTips) return '';
+
+    let html = `<div class="itin-info-grid">`;
+    if (hasFoods) {
+      html += `
+        <div class="itin-info-card">
+          <div class="itin-info-title"><span>🍜</span> Must-Try Local Delicacies</div>
+          <div class="itin-tag-list">
+            ${plan.mustTryFoods.map(f => `<span class="itin-tag-pill">${escapeHTML(f)}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+    if (hasTips) {
+      html += `
+        <div class="itin-info-card">
+          <div class="itin-info-title"><span>💡</span> Practical Travel Tips</div>
+          <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; margin: 0;">${escapeHTML(plan.tips)}</p>
+        </div>
+      `;
+    }
+    html += `</div>`;
+    return html;
   }
 
   function renderItineraryContent(itinerary, trip) {
@@ -4388,126 +4925,195 @@ CRITICAL RULES:
 
     if (!container) return;
 
-    if (!itinerary || !Array.isArray(itinerary.days) || itinerary.days.length === 0) {
-      // Empty Starter State
-      const currentDays = document.getElementById('itinDaysSelect') ? document.getElementById('itinDaysSelect').value : 5;
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
+    const plan = getItineraryPlan(itinerary, mode);
+
+    updateItineraryToolbarForMode(trip);
+
+    const savedCount = getSavedItineraryModes(itinerary).length;
+    const savedSuffix = savedCount > 1 ? ` • ${savedCount} Saved` : '';
+
+    if (!plan) {
       container.innerHTML = `
         <div class="itin-empty-state">
-          <div class="itin-empty-icon">🧭</div>
-          <h3 class="itin-empty-title">Start Planning Your Journey</h3>
-          <p class="itin-empty-desc">Let Gemini AI craft an evocative, well-paced couples starter canvas for <strong>${escapeHTML(trip ? trip.name : 'this destination')}</strong>—complete with morning, afternoon, and evening sights, sweet couple micro-moments, and local foodie highlights.</p>
-          <button class="btn btn-primary btn-sm" id="btnEmptyStateGen">✨ Generate Canvas (${currentDays} Days)</button>
+          <div class="itin-empty-icon">${modeCfg.icon}</div>
+          <h3 class="itin-empty-title">${escapeHTML(modeCfg.emptyTitle)}</h3>
+          <p class="itin-empty-desc">${escapeHTML(modeCfg.emptyDesc)} Destination: <strong>${escapeHTML(trip ? trip.name : 'this destination')}</strong>.</p>
+          <button class="btn btn-primary btn-sm" id="btnEmptyStateGen">${escapeHTML(getEmptyStateButtonLabel(mode))}</button>
         </div>
       `;
       const emptyBtn = document.getElementById('btnEmptyStateGen');
       if (emptyBtn) {
         emptyBtn.addEventListener('click', generateActiveItinerary);
       }
-      if (statusTag) statusTag.textContent = '✦ Ready to Plan';
+      if (statusTag) statusTag.textContent = `✦ ${modeCfg.badge}${savedSuffix}`;
       if (timeText) timeText.textContent = '';
       if (copyBtn) copyBtn.style.display = 'none';
       if (clearBtn) clearBtn.style.display = 'none';
-      if (notesSection) notesSection.style.display = 'none';
+      if (notesSection) {
+        const hasAnyNotesOrPlan = hasItineraryContent(itinerary);
+        notesSection.style.display = hasAnyNotesOrPlan ? 'block' : 'none';
+        if (notesInput && itinerary) notesInput.value = itinerary.notes || '';
+      }
       return;
     }
 
     // Populated State
-    if (statusTag) statusTag.textContent = '✨ AI Travel Canvas';
+    if (statusTag) statusTag.textContent = `✨ ${modeCfg.badge}${savedSuffix}`;
     if (timeText) {
-      const dateStr = itinerary.generatedAt ? new Date(itinerary.generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const dateStr = plan.generatedAt ? new Date(plan.generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       timeText.textContent = dateStr ? `Generated ${dateStr}` : '';
     }
     if (copyBtn) copyBtn.style.display = 'inline-flex';
     if (clearBtn) clearBtn.style.display = 'inline-flex';
     if (notesSection) {
       notesSection.style.display = 'block';
-      if (notesInput) notesInput.value = itinerary.notes || '';
+      if (notesInput) notesInput.value = (itinerary && itinerary.notes) || '';
     }
 
-    const paceLabels = {
-      relaxed: '☕ Relaxed & Cozy',
-      balanced: '✨ Balanced Highlights',
-      active: '🏃 Active Exploration'
-    };
-    const paceStr = paceLabels[itinerary.pace] || itinerary.pace || 'Relaxed';
+    let summaryPillsHtml = '';
+    if (mode === 'daily') {
+      const paceLabels = {
+        relaxed: '☕ Relaxed & Cozy',
+        balanced: '✨ Balanced Highlights',
+        active: '🏃 Active Exploration'
+      };
+      const paceStr = paceLabels[plan.pace] || plan.pace || 'Relaxed';
+      summaryPillsHtml = `
+        <span class="pill pill-cyan">${plan.targetDays || plan.days.length} Days</span>
+        <span class="pill pill-purple">${escapeHTML(paceStr)}</span>
+      `;
+    } else if (mode === 'area') {
+      summaryPillsHtml = `
+        <span class="pill pill-cyan">${plan.areas.length} Areas</span>
+        <span class="pill pill-purple">📍 Flexible Area Guide</span>
+      `;
+    } else {
+      const unitLabel = mode === 'foodie' ? 'Trails' : mode === 'highlights' ? 'Sections' : 'Vibes';
+      summaryPillsHtml = `
+        <span class="pill pill-cyan">${plan.groups.length} ${unitLabel}</span>
+        <span class="pill pill-purple">${escapeHTML(modeCfg.label)}</span>
+      `;
+    }
 
     let html = `
       <div class="itin-summary-card">
-        <div class="itin-summary-text">${escapeHTML(itinerary.summary || '')}</div>
+        <div class="itin-summary-text">${escapeHTML(plan.summary || '')}</div>
         <div class="itin-summary-pills">
-          <span class="pill pill-cyan">${itinerary.targetDays || itinerary.days.length} Days</span>
-          <span class="pill pill-purple">${escapeHTML(paceStr)}</span>
-          ${itinerary.model ? `<span class="pill" style="background:rgba(255,255,255,0.06); color:var(--text-muted); font-size:0.75rem;">🤖 ${escapeHTML(itinerary.model)}</span>` : ''}
+          ${summaryPillsHtml}
+          ${plan.model ? `<span class="pill" style="background:rgba(255,255,255,0.06); color:var(--text-muted); font-size:0.75rem;">🤖 ${escapeHTML(plan.model)}</span>` : ''}
         </div>
       </div>
 
       <div class="itin-timeline">
     `;
 
-    itinerary.days.forEach(d => {
-      html += `
-        <div class="itin-day-card">
-          <div class="itin-day-header">
-            <span class="itin-day-badge">Day ${d.day}</span>
-            <div class="itin-day-title">${escapeHTML(d.theme || '')}</div>
-          </div>
-          <div class="itin-slot-row">
-            <span class="itin-slot-icon">🌅</span>
-            <div class="itin-slot-content">
-              <strong>Morning:</strong> ${escapeHTML(d.morning || '')}
+    if (mode === 'daily') {
+      plan.days.forEach(d => {
+        html += `
+          <div class="itin-day-card">
+            <div class="itin-day-header">
+              <span class="itin-day-badge">Day ${d.day}</span>
+              <div class="itin-day-title">${escapeHTML(d.theme || '')}</div>
             </div>
-          </div>
-          <div class="itin-slot-row">
-            <span class="itin-slot-icon">☀️</span>
-            <div class="itin-slot-content">
-              <strong>Afternoon:</strong> ${escapeHTML(d.afternoon || '')}
-            </div>
-          </div>
-          <div class="itin-slot-row">
-            <span class="itin-slot-icon">🌙</span>
-            <div class="itin-slot-content">
-              <strong>Evening:</strong> ${escapeHTML(d.evening || '')}
-            </div>
-          </div>
-          ${d.coupleHighlight ? `
-            <div class="itin-couple-highlight">
-              <span style="font-size:1.1rem; flex-shrink: 0;">💖</span>
-              <div>
-                <strong>Couple Moment:</strong> ${escapeHTML(d.coupleHighlight)}
+            <div class="itin-slot-row">
+              <span class="itin-slot-icon">🌅</span>
+              <div class="itin-slot-content">
+                <strong>Morning:</strong> ${escapeHTML(d.morning || '')}
               </div>
             </div>
-          ` : ''}
-        </div>
-      `;
-    });
-
-    html += `</div>`; // end itin-timeline
-
-    // Info Grid (Foods & Tips)
-    const hasFoods = Array.isArray(itinerary.mustTryFoods) && itinerary.mustTryFoods.length > 0;
-    const hasTips = Boolean(itinerary.tips);
-    if (hasFoods || hasTips) {
-      html += `<div class="itin-info-grid">`;
-      if (hasFoods) {
+            <div class="itin-slot-row">
+              <span class="itin-slot-icon">☀️</span>
+              <div class="itin-slot-content">
+                <strong>Afternoon:</strong> ${escapeHTML(d.afternoon || '')}
+              </div>
+            </div>
+            <div class="itin-slot-row">
+              <span class="itin-slot-icon">🌙</span>
+              <div class="itin-slot-content">
+                <strong>Evening:</strong> ${escapeHTML(d.evening || '')}
+              </div>
+            </div>
+            ${d.coupleHighlight ? `
+              <div class="itin-couple-highlight">
+                <span style="font-size:1.1rem; flex-shrink: 0;">💖</span>
+                <div>
+                  <strong>Couple Moment:</strong> ${escapeHTML(d.coupleHighlight)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    } else if (mode === 'area') {
+      plan.areas.forEach(area => {
+        const places = Array.isArray(area.places) ? area.places : [];
         html += `
-          <div class="itin-info-card">
-            <div class="itin-info-title"><span>🍜</span> Must-Try Local Delicacies</div>
-            <div class="itin-tag-list">
-              ${itinerary.mustTryFoods.map(f => `<span class="itin-tag-pill">${escapeHTML(f)}</span>`).join('')}
+          <div class="itin-area-card">
+            <div class="itin-area-header">
+              <div class="itin-area-title-row">
+                <div class="itin-area-name">${escapeHTML(area.name || '')}</div>
+                <span class="itin-area-count-badge">${places.length} Spots</span>
+              </div>
+              ${area.vibe ? `<div class="itin-area-vibe">${escapeHTML(area.vibe)}</div>` : ''}
+            </div>
+            ${(area.bestTime || area.gettingAround) ? `
+              <div class="itin-area-meta">
+                ${area.bestTime ? `<span class="itin-meta-chip">🕒 ${escapeHTML(area.bestTime)}</span>` : ''}
+                ${area.gettingAround ? `<span class="itin-meta-chip">🚇 ${escapeHTML(area.gettingAround)}</span>` : ''}
+              </div>
+            ` : ''}
+            <div class="itin-places-list">
+              ${places.map(p => `
+                <div class="itin-place-item">
+                  ${p.category ? `<span class="itin-place-cat">${escapeHTML(p.category)}</span>` : ''}
+                  <div class="itin-place-body">
+                    <span class="itin-place-name">${escapeHTML(p.name || '')}</span>${p.note ? ` — ${escapeHTML(p.note)}` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            ${area.coupleHighlight ? `
+              <div class="itin-couple-highlight">
+                <span style="font-size:1.1rem; flex-shrink: 0;">💖</span>
+                <div>
+                  <strong>Couple Moment:</strong> ${escapeHTML(area.coupleHighlight)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    } else {
+      plan.groups.forEach(group => {
+        const items = Array.isArray(group.items) ? group.items : [];
+        html += `
+          <div class="itin-group-card">
+            <div class="itin-group-header">
+              <div class="itin-area-title-row">
+                <div class="itin-group-title">${escapeHTML(group.title || '')}</div>
+                <span class="itin-area-count-badge">${items.length} Picks</span>
+              </div>
+              ${group.subtitle ? `<div class="itin-group-subtitle">${escapeHTML(group.subtitle)}</div>` : ''}
+            </div>
+            <div class="itin-group-items">
+              ${items.map(item => `
+                <div class="itin-group-item">
+                  ${item.area ? `<span class="itin-item-area-pill">${escapeHTML(item.area)}</span>` : ''}
+                  <div class="itin-group-item-body">
+                    <span class="itin-group-item-name">${escapeHTML(item.name || '')}</span>${item.mustOrder ? `<span class="itin-must-order-badge">必點: ${escapeHTML(item.mustOrder)}</span>` : ''}${item.note ? `<div style="margin-top:2px;">${escapeHTML(item.note)}</div>` : ''}
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
         `;
-      }
-      if (hasTips) {
-        html += `
-          <div class="itin-info-card">
-            <div class="itin-info-title"><span>💡</span> Practical Travel Tips</div>
-            <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; margin: 0;">${escapeHTML(itinerary.tips)}</p>
-          </div>
-        `;
-      }
-      html += `</div>`;
+      });
     }
+
+    html += `</div>`; // end itin-timeline
+    html += renderItineraryInfoGrid(plan);
 
     container.innerHTML = html;
   }
@@ -4523,6 +5129,8 @@ CRITICAL RULES:
       return;
     }
 
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
     const daysSelect = document.getElementById('itinDaysSelect');
     const paceSelect = document.getElementById('itinPaceSelect');
     const targetDays = daysSelect ? parseInt(daysSelect.value, 10) : 5;
@@ -4537,13 +5145,17 @@ CRITICAL RULES:
     if (textSpan) textSpan.style.display = 'none';
     if (spinnerSpan) spinnerSpan.style.display = 'inline-block';
 
+    const loadingHeading = mode === 'daily'
+      ? `Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...`
+      : `${escapeHTML(modeCfg.loadingTitle)} for ${escapeHTML(trip.name)}...`;
+
     // Show shimmer loading state
     if (container) {
       container.innerHTML = `
         <div class="itin-loading-state">
           <div class="ai-pulse-orb" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); animation: pulseOrb 1.5s infinite; margin-bottom: 6px;"></div>
-          <h4 style="color:#fff; font-size:1.05rem; margin:0;">Curating ${targetDays}-Day Itinerary for ${escapeHTML(trip.name)}...</h4>
-          <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">Crafting daily highlights, sweet couple moments, and authentic foodie spots</p>
+          <h4 style="color:#fff; font-size:1.05rem; margin:0;">${loadingHeading}</h4>
+          <p style="color:var(--text-muted); font-size:0.82rem; margin:0;">${escapeHTML(modeCfg.loadingDesc)}</p>
           <div class="itin-shimmer-box" style="margin-top: 14px;"></div>
           <div class="itin-shimmer-box" style="height: 80px; opacity: 0.7;"></div>
           <div class="itin-shimmer-box" style="height: 80px; opacity: 0.5;"></div>
@@ -4552,17 +5164,12 @@ CRITICAL RULES:
     }
 
     try {
-      const generatedSpec = await aiEngine.generateItinerary(trip, { targetDays, pace });
-      if (!generatedSpec || !Array.isArray(generatedSpec.days)) {
+      const generatedSpec = await aiEngine.generateItinerary(trip, { mode, targetDays, pace });
+      if (!generatedSpec || !hasSinglePlanContent(generatedSpec, mode)) {
         throw new Error('AI returned an invalid itinerary structure.');
       }
 
-      // Preserve existing couple notes if any
-      if (trip.itinerary && trip.itinerary.notes) {
-        generatedSpec.notes = trip.itinerary.notes;
-      }
-
-      trip.itinerary = generatedSpec;
+      storeItineraryPlanForMode(trip, mode, generatedSpec);
       trip.updatedAt = Date.now();
       saveData();
 
@@ -4572,7 +5179,8 @@ CRITICAL RULES:
       }
       renderTripsTable();
 
-      showToast(`✨ Generated ${targetDays}-Day itinerary for ${trip.name}!`);
+      const successLabel = mode === 'daily' ? `${targetDays}-Day itinerary` : `${modeCfg.badge} guide`;
+      showToast(`✨ Generated ${successLabel} for ${trip.name}!`);
       sfx.sparkle();
       confetti.burst();
     } catch (err) {
@@ -4604,18 +5212,20 @@ CRITICAL RULES:
   function clearItineraryPlan() {
     if (!activeItineraryTripId) return;
     const trip = state.trips.find(t => t.id === activeItineraryTripId);
-    if (!trip) return;
+    if (!trip || !trip.itinerary) return;
 
-    if (confirm(`Reset and clear the itinerary plan for "${trip.name}"?`)) {
-      delete trip.itinerary;
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
+    if (confirm(`Reset and clear the "${modeCfg.badge}" plan for "${trip.name}"?`)) {
+      removeItineraryPlanForMode(trip, mode);
       trip.updatedAt = Date.now();
       saveData();
-      renderItineraryContent(null, trip);
+      renderItineraryContent(trip.itinerary, trip);
       if (state.selectedTrip && state.selectedTrip.id === trip.id) {
         renderSelectedTripCard();
       }
       renderTripsTable();
-      showToast('🗑️ Itinerary plan reset.');
+      showToast(`🗑️ Cleared ${modeCfg.badge} plan.`);
       sfx.trash();
     }
   }
@@ -4625,36 +5235,65 @@ CRITICAL RULES:
     const trip = state.trips.find(t => t.id === activeItineraryTripId);
     if (!trip || !trip.itinerary) return;
 
-    const itin = trip.itinerary;
+    const mode = ITINERARY_MODES[activeItineraryMode] ? activeItineraryMode : 'daily';
+    const modeCfg = ITINERARY_MODES[mode];
+    const plan = getItineraryPlan(trip.itinerary, mode);
+    if (!plan) return;
+
     const coupleNames = getCoupleNames();
-    const days = itin.days || [];
+    const headerSuffix = mode === 'daily'
+      ? `${plan.targetDays || plan.days.length}天 專屬旅行規劃`
+      : `${modeCfg.badge} 專屬指南`;
 
-    let text = `✈️ 【${trip.name}】${itin.targetDays || days.length}天 專屬旅行規劃\n`;
+    let text = `✈️ 【${trip.name}】${headerSuffix}\n`;
     text += `📍 地點：${trip.locationName || trip.name}\n`;
-    if (itin.summary) text += `✨ 旅程概述：${itin.summary}\n`;
-    text += `\n🗓️ 行程安排：\n`;
+    if (plan.summary) text += `✨ 旅程概述：${plan.summary}\n`;
 
-    days.forEach(d => {
-      text += `\n【Day ${d.day}】${d.theme || ''}\n`;
-      if (d.morning) text += `• 🌅 早晨：${d.morning}\n`;
-      if (d.afternoon) text += `• ☀️ 午後：${d.afternoon}\n`;
-      if (d.evening) text += `• 🌙 夜晚：${d.evening}\n`;
-      if (d.coupleHighlight) text += `• 💖 浪漫時刻：${d.coupleHighlight}\n`;
-    });
+    if (mode === 'daily') {
+      text += `\n🗓️ 行程安排：\n`;
+      (plan.days || []).forEach(d => {
+        text += `\n【Day ${d.day}】${d.theme || ''}\n`;
+        if (d.morning) text += `• 🌅 早晨：${d.morning}\n`;
+        if (d.afternoon) text += `• ☀️ 午後：${d.afternoon}\n`;
+        if (d.evening) text += `• 🌙 夜晚：${d.evening}\n`;
+        if (d.coupleHighlight) text += `• 💖 浪漫時刻：${d.coupleHighlight}\n`;
+      });
+    } else if (mode === 'area') {
+      text += `\n📍 分區景點探索：\n`;
+      (plan.areas || []).forEach(area => {
+        text += `\n【${area.name || ''}】${area.vibe ? ` — ${area.vibe}` : ''}\n`;
+        if (area.bestTime) text += `• 🕒 建議時段：${area.bestTime}\n`;
+        if (area.gettingAround) text += `• 🚇 交通方式：${area.gettingAround}\n`;
+        (area.places || []).forEach(p => {
+          text += `• ${p.category ? `[${p.category}] ` : ''}${p.name || ''}${p.note ? `：${p.note}` : ''}\n`;
+        });
+        if (area.coupleHighlight) text += `• 💖 浪漫時刻：${area.coupleHighlight}\n`;
+      });
+    } else {
+      text += `\n${modeCfg.icon} ${modeCfg.badge}精選：\n`;
+      (plan.groups || []).forEach(group => {
+        text += `\n【${group.title || ''}】${group.subtitle ? `（${group.subtitle}）` : ''}\n`;
+        (group.items || []).forEach(item => {
+          const orderTag = item.mustOrder ? `（必點：${item.mustOrder}）` : '';
+          const areaTag = item.area ? `[${item.area}] ` : '';
+          text += `• ${areaTag}${item.name || ''}${orderTag}${item.note ? ` — ${item.note}` : ''}\n`;
+        });
+      });
+    }
 
-    if (Array.isArray(itin.mustTryFoods) && itin.mustTryFoods.length > 0) {
+    if (Array.isArray(plan.mustTryFoods) && plan.mustTryFoods.length > 0) {
       text += `\n🍜 必嚐在地美食：\n`;
-      itin.mustTryFoods.forEach(f => {
+      plan.mustTryFoods.forEach(f => {
         text += `• ${f}\n`;
       });
     }
 
-    if (itin.tips) {
-      text += `\n💡 實用小撇步：\n${itin.tips}\n`;
+    if (plan.tips) {
+      text += `\n💡 實用小撇步：\n${plan.tips}\n`;
     }
 
-    if (itin.notes) {
-      text += `\n📝 我們的筆記與備忘：\n${itin.notes}\n`;
+    if (trip.itinerary.notes) {
+      text += `\n📝 我們的筆記與備忘：\n${trip.itinerary.notes}\n`;
     }
 
     text += `\n— 來自 Sync & Sway (${coupleNames}) 專屬旅行規劃`;
@@ -5384,12 +6023,24 @@ CRITICAL RULES:
     const btnClearItin = document.getElementById('btnClearItinerary');
     if (btnClearItin) btnClearItin.addEventListener('click', clearItineraryPlan);
 
+    const itinModeTabs = document.getElementById('itinModeTabs');
+    if (itinModeTabs) {
+      itinModeTabs.addEventListener('click', (e) => {
+        const tab = e.target.closest('.itin-mode-tab');
+        if (tab && tab.dataset.mode) {
+          switchItineraryMode(tab.dataset.mode);
+        }
+      });
+    }
+
     const itinDaysSelect = document.getElementById('itinDaysSelect');
     if (itinDaysSelect) {
       itinDaysSelect.addEventListener('change', () => {
-        const emptyBtn = document.getElementById('btnEmptyStateGen');
-        if (emptyBtn) {
-          emptyBtn.textContent = `✨ Generate Canvas (${itinDaysSelect.value} Days)`;
+        if (activeItineraryMode === 'daily') {
+          const emptyBtn = document.getElementById('btnEmptyStateGen');
+          if (emptyBtn) {
+            emptyBtn.textContent = `✨ Generate Canvas (${itinDaysSelect.value} Days)`;
+          }
         }
       });
     }

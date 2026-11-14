@@ -3994,7 +3994,66 @@ optgroup {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+}
+
+.itin-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.itin-mode-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.itin-mode-tab:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.itin-mode-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28) 0%, rgba(168, 85, 247, 0.22) 100%);
+  border-color: rgba(129, 140, 248, 0.5);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.18);
+}
+
+.itin-mode-tab.has-plan::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.7);
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.itin-mode-hint {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  flex: 1;
+  min-width: 200px;
 }
 
 .itinerary-toolbar {
@@ -4205,6 +4264,140 @@ optgroup {
   color: #ffe4e6;
 }
 
+/* Area & Group Cards (By Area / By Vibe / Foodie / Must-Dos) */
+.itin-area-card,
+.itin-group-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.itin-area-card:hover,
+.itin-group-card:hover {
+  border-color: rgba(129, 140, 248, 0.3);
+  transform: translateY(-1px);
+}
+
+.itin-area-header,
+.itin-group-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 9px;
+}
+
+.itin-area-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.itin-area-name,
+.itin-group-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.itin-area-count-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.itin-area-vibe,
+.itin-group-subtitle {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.itin-area-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.itin-meta-chip {
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 4px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.itin-places-list,
+.itin-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itin-place-item,
+.itin-group-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.itin-place-cat,
+.itin-item-area-pill {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  padding: 2px 8px;
+  border-radius: 7px;
+  margin-top: 2px;
+}
+
+.itin-place-body,
+.itin-group-item-body {
+  flex: 1;
+  min-width: 0;
+  color: #cbd5e1;
+}
+
+.itin-place-name,
+.itin-group-item-name {
+  color: #fff;
+  font-weight: 600;
+}
+
+.itin-must-order-badge {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
 /* Sections for food & packing */
 .itin-info-grid {
   display: grid;
@@ -4327,6 +4520,10 @@ optgroup {
   .itinerary-modal-window {
     width: 98%;
     max-height: 94vh;
+  }
+  .itin-mode-tab {
+    font-size: 0.75rem;
+    padding: 5px 9px;
   }
   .itinerary-toolbar {
     flex-direction: column;

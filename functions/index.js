@@ -302,14 +302,108 @@ exports.aiGenerate = functions.https.onRequest(async (req, res) => {
     try {
       const https = require('https');
       if (type === 'itinerary') {
-        const { targetDays, pace, locationName, seasons, destinationName } = req.body || {};
+        const { mode, targetDays, pace, locationName, seasons, destinationName } = req.body || {};
+        const itinMode = ['daily', 'area', 'vibe', 'foodie', 'highlights'].includes(mode) ? mode : 'daily';
         const daysCount = parseInt(targetDays, 10) || 5;
         const paceStr = pace || 'relaxed';
         const dest = destinationName || query;
         const loc = locationName || '';
         const seasonInfo = Array.isArray(seasons) ? seasons.join(', ') : 'all';
 
-        prompt = `You are an elite romantic travel designer creating an inspiring, stress-free day-by-day travel itinerary starting point for ${couple}, a loving couple departing from Taiwan.
+        if (itinMode === 'area') {
+          prompt = `You are an elite romantic travel designer for ${couple}, a loving couple departing from Taiwan.
+Create a flexible, area-by-area exploration guide for "${dest}" (${loc}).
+Do NOT organize by Day 1 / Day 2—group recommended sights, cozy cafes, local restaurants, and scenic walks by neighborhood / district / area.
+Seasons: ${seasonInfo}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "area",
+  "summary": "1-2 inspiring sentences in Traditional Chinese capturing the neighborhood character of ${dest}.",
+  "areas": [
+    {
+      "name": "Area / District Name in Traditional Chinese with emoji",
+      "vibe": "Short atmospheric tagline in Traditional Chinese",
+      "bestTime": "Best time of day to visit in Traditional Chinese",
+      "gettingAround": "Practical transit & walking tip in Traditional Chinese",
+      "places": [
+        { "name": "Specific Place Name", "category": "景點 | 咖啡廳 | 美食 | 散步 | 購物 | 體驗", "note": "Concise 1-sentence reason to visit in Traditional Chinese" }
+      ],
+      "coupleHighlight": "A tender couple micro-moment in this area in Traditional Chinese"
+    }
+  ],
+  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4"],
+  "tips": "2-3 practical tips for Taiwanese travelers in Traditional Chinese."
+}
+CRITICAL RULES: Provide 4 to 6 distinct areas, each with 3 to 5 real places. Output all prose in Traditional Chinese (繁體中文).`;
+        } else if (itinMode === 'vibe') {
+          prompt = `You are an elite romantic travel designer for ${couple}, a loving couple departing from Taiwan.
+Curate a mood-and-weather-based travel guide for "${dest}" (${loc}) grouped by VIBE rather than by day.
+Seasons: ${seasonInfo}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "vibe",
+  "summary": "1-2 inspiring sentences in Traditional Chinese about exploring ${dest} by mood and weather.",
+  "groups": [
+    {
+      "title": "Mood / Vibe Category in Traditional Chinese with emoji (cover Golden Hour & Scenic Views, Cozy Cafés, Culture & Markets, Romantic Evenings, and Rainy-Day Indoor Hideaways)",
+      "subtitle": "When to pick this vibe in Traditional Chinese",
+      "items": [
+        { "name": "Specific Place or Activity", "area": "District tag", "note": "Specific 1-sentence highlight in Traditional Chinese" }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4"],
+  "tips": "2-3 practical mood/weather planning tips in Traditional Chinese."
+}
+CRITICAL RULES: Provide 4 to 5 mood groups with 3 to 4 real items each. Output all prose in Traditional Chinese (繁體中文).`;
+        } else if (itinMode === 'foodie') {
+          prompt = `You are a romantic culinary & cafe travel curator for ${couple}, a loving couple departing from Taiwan.
+Create a dedicated Foodie & Café Trail for "${dest}" (${loc}) organized by culinary occasion.
+Seasons: ${seasonInfo}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "foodie",
+  "summary": "1-2 appetizing sentences in Traditional Chinese capturing the food & cafe soul of ${dest}.",
+  "groups": [
+    {
+      "title": "Culinary Category in Traditional Chinese with emoji (Morning Coffee & Bakeries, Iconic Local Eats, Street Food & Markets, Desserts & Souvenirs, Date-Night Dining & Bars)",
+      "subtitle": "Occasion note in Traditional Chinese",
+      "items": [
+        { "name": "Specific Spot Name", "area": "District tag", "mustOrder": "Signature item to order", "note": "1-sentence highlight or reservation tip in Traditional Chinese" }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4", "Specific dish 5"],
+  "tips": "2-3 practical dining tips in Traditional Chinese."
+}
+CRITICAL RULES: Provide 4 to 5 culinary groups with 3 to 4 real spots each. Output all prose in Traditional Chinese (繁體中文).`;
+        } else if (itinMode === 'highlights') {
+          prompt = `You are an insider romantic travel strategist for ${couple}, a loving couple departing from Taiwan.
+Create a high-signal "Must-Dos & Hidden Gems" cheat sheet for "${dest}" (${loc}).
+Seasons: ${seasonInfo}
+
+Return ONLY a valid JSON object matching this exact schema:
+{
+  "mode": "highlights",
+  "summary": "1-2 sharp sentences in Traditional Chinese summarizing what makes ${dest} unforgettable.",
+  "groups": [
+    {
+      "title": "Section Title in Traditional Chinese with emoji (provide 4 sections: 🏆 不可錯過的經典必去, 💎 避開人潮的私房秘境, 💖 情侶專屬浪漫儀式感, 🚫 聰明避雷與替代方案)",
+      "subtitle": "How to use this section in Traditional Chinese",
+      "items": [
+        { "name": "Specific Landmark, Secret Spot, Couple Ritual, or Trap-to-Swap", "area": "District or quick tag", "note": "Actionable 1-2 sentence insider advice in Traditional Chinese" }
+      ]
+    }
+  ],
+  "mustTryFoods": ["Specific dish 1", "Specific dish 2", "Specific dish 3", "Specific dish 4"],
+  "tips": "2-3 high-value logistics tips in Traditional Chinese."
+}
+CRITICAL RULES: Provide 4 sections with 3 to 4 specific items each. Output all prose in Traditional Chinese (繁體中文).`;
+        } else {
+          prompt = `You are an elite romantic travel designer creating an inspiring, stress-free day-by-day travel itinerary starting point for ${couple}, a loving couple departing from Taiwan.
 
 Destination: "${dest}" (${loc})
 Duration: ${daysCount} Days
@@ -318,6 +412,7 @@ Seasons: ${seasonInfo}
 
 Return ONLY a valid JSON object matching this exact schema:
 {
+  "mode": "daily",
   "summary": "1 to 2 evocative sentences in Traditional Chinese capturing the romantic essence and mood of this journey",
   "pace": "${paceStr}",
   "totalDays": ${daysCount},
@@ -341,6 +436,7 @@ CRITICAL RULES:
 2. Day 1 Logistics: Reflect realistic Taiwan departure flight times (e.g. 3-4 hr flight for Japan/Korea; 12-16 hr flight for Europe/Americas where arrival is late afternoon/night).
 3. Pacing: Never cram more than 2-3 main scenic areas or neighborhood strolls per day so the couple can truly relax.
 4. Language: Output all values in Traditional Chinese (繁體中文).`;
+        }
       } else if (type === 'trip') {
         const varietyThemes = [
           'Sensory & Atmospheric (tangible weather, fragrances, sounds, morning or twilight light)',
@@ -461,12 +557,27 @@ environment must be one of: "indoor", "outdoor", "any".`;
               if (type === 'trip' && spec.seasons) {
                 spec.seasons = normalizeSeasons(spec.seasons);
               } else if (type === 'itinerary' && spec) {
-                spec.targetDays = spec.targetDays || spec.totalDays || (spec.days && spec.days.length);
+                const reqMode = (req.body && req.body.mode) || spec.mode || 'daily';
+                spec.mode = ['daily', 'area', 'vibe', 'foodie', 'highlights'].includes(reqMode) ? reqMode : 'daily';
                 spec.mustTryFoods = spec.mustTryFoods || spec.foodMustTry || [];
                 spec.tips = spec.tips || (Array.isArray(spec.packingTips) ? spec.packingTips.join('；') : spec.packingTips) || '';
-                if (Array.isArray(spec.days)) {
-                  spec.days.forEach(d => {
-                    d.theme = d.theme || d.title || '';
+                if (spec.mode === 'daily') {
+                  spec.targetDays = spec.targetDays || spec.totalDays || (spec.days && spec.days.length);
+                  if (Array.isArray(spec.days)) {
+                    spec.days.forEach((d, idx) => {
+                      d.day = d.day || (idx + 1);
+                      d.theme = d.theme || d.title || '';
+                    });
+                  }
+                } else if (spec.mode === 'area' && Array.isArray(spec.areas)) {
+                  spec.areas.forEach(a => {
+                    a.name = a.name || a.area || a.title || '';
+                    a.places = Array.isArray(a.places) ? a.places : (Array.isArray(a.items) ? a.items : []);
+                  });
+                } else if (Array.isArray(spec.groups)) {
+                  spec.groups.forEach(g => {
+                    g.title = g.title || g.name || '';
+                    g.items = Array.isArray(g.items) ? g.items : (Array.isArray(g.places) ? g.places : []);
                   });
                 }
               }

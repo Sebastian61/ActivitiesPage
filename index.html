@@ -792,15 +792,34 @@
       </div>
 
       <div class="itinerary-modal-body">
-        <!-- Controls Toolbar: Duration, Pace, Generate -->
-        <div class="itinerary-toolbar">
-          <div class="itinerary-ctrl-group">
+        <!-- Planning Style Tabs -->
+        <div class="itin-mode-tabs" id="itinModeTabs" role="tablist" aria-label="Itinerary Planning Style">
+          <button type="button" class="itin-mode-tab active" data-mode="daily" role="tab" aria-selected="true" title="Day-by-day schedule with customizable duration and pace">
+            📅 Day-by-Day
+          </button>
+          <button type="button" class="itin-mode-tab" data-mode="area" role="tab" aria-selected="false" title="Group places to visit, cafes, and eats by neighborhood or area">
+            📍 By Area
+          </button>
+          <button type="button" class="itin-mode-tab" data-mode="vibe" role="tab" aria-selected="false" title="Curated by mood and weather: scenic views, cozy cafes, culture, romance, rainy-day spots">
+            ✨ By Vibe
+          </button>
+          <button type="button" class="itin-mode-tab" data-mode="foodie" role="tab" aria-selected="false" title="Morning coffee, iconic local eats, street markets, and date-night dining">
+            🍜 Foodie Trail
+          </button>
+          <button type="button" class="itin-mode-tab" data-mode="highlights" role="tab" aria-selected="false" title="Iconic must-dos, hidden local gems, couple rituals, and traps to skip">
+            ⭐ Must-Dos &amp; Gems
+          </button>
+        </div>
+
+        <!-- Controls Toolbar: Mode-specific options + Generate -->
+        <div class="itinerary-toolbar" id="itinToolbar">
+          <div class="itinerary-ctrl-group itin-daily-only" id="itinDaysCtrlGroup">
             <label for="itinDaysSelect" class="itin-ctrl-label">Duration:</label>
             <select id="itinDaysSelect" class="select-box itin-select">
               <!-- Dynamically populated e.g. 5 Days, 6 Days, 7 Days... -->
             </select>
           </div>
-          <div class="itinerary-ctrl-group">
+          <div class="itinerary-ctrl-group itin-daily-only" id="itinPaceCtrlGroup">
             <label for="itinPaceSelect" class="itin-ctrl-label">Pace:</label>
             <select id="itinPaceSelect" class="select-box itin-select">
               <option value="relaxed" selected>☕ Relaxed &amp; Romantic (Cozy)</option>
@@ -808,6 +827,7 @@
               <option value="active">🏃 Active Exploration</option>
             </select>
           </div>
+          <div class="itin-mode-hint" id="itinModeHint" style="display: none;"></div>
           <button class="btn btn-primary btn-sm btn-generate-itin" id="btnGenerateItinerary">
             <span id="btnItinGenText">✨ Generate Plan</span>
             <span id="btnItinGenSpinner" style="display:none;" class="ai-spinner">⏳</span>
